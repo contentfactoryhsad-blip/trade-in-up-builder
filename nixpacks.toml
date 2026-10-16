@@ -1,0 +1,5 @@
+# Railway 배포 — 빌드 단계 없이 server.ts 로 public/ 과 API 를 서빙한다 (PORT 는 Railway 가 넣어 준다)
+providers = ["node"]
+
+[start]
+cmd = "npm start"
