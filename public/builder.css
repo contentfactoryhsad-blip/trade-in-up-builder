@@ -59,13 +59,8 @@ body.tb { display: flex; flex-direction: column; height: 100vh; overflow: hidden
 .tb-rail-row:hover { background: var(--gray-50); color: var(--gray-900); }
 .tb-rail-row.active { color: var(--brand); background: rgb(253 49 46 / .08); }
 .tb-rail-row svg { flex-shrink: 0; }
-.tb-rail-row span, .tb-rail-label span { font-size: 14px; font-weight: 500; opacity: 0; transition: opacity .15s; }
-.tb-rail:hover .tb-rail-row span, .tb-rail:hover .tb-rail-label span { opacity: 1; }
-.tb-rail-label {
-  margin: 8px 0 0; padding: 10px 22px 4px; border-top: 1px solid var(--gray-100);
-  height: 30px; white-space: nowrap;
-}
-.tb-rail-label span { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .04em; }
+.tb-rail-row span { font-size: 14px; font-weight: 500; opacity: 0; transition: opacity .15s; }
+.tb-rail:hover .tb-rail-row span { opacity: 1; }
 
 /* 사이드 패널 */
 .tb-side { flex-shrink: 0; background: #fff; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }

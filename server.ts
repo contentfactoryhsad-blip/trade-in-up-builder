@@ -1,5 +1,5 @@
 /**
- * 제품 합성 테스트 서버 — 정적 페이지(public)와 크롤링·이미지 프록시 API 를 함께 서빙한다.
+ * Trade In-Up Builder 서버 — 정적 페이지(public)와 크롤링·이미지 프록시 API 를 함께 서빙한다.
  *
  * 브라우저에서 LG.com 을 직접 부르면 CORS 에 막히므로 크롤링·이미지는 반드시
  * 서버를 거친다. 빌드 단계 없이 public 폴더를 그대로 내보낸다.
@@ -72,8 +72,8 @@ app.post('/api/crawl-page', async (req, res) => {
 
 // ─── 정적 파일 ───────────────────────────────────────────────────────────────
 
-// 첫 화면 = Trade In-Up Builder (/builder 도 같은 페이지). 예전 테스트 페이지는
-// /composite.html(제품 합성), /infill.html, /studio.html 로 그대로 남는다.
+// 첫 화면 = Trade In-Up Builder (/builder 도 같은 페이지).
+// 예전 테스트 페이지(제품 합성·인필·스튜디오)는 archive/lab-pages/ 에 보관 — 서빙하지 않는다.
 const sendBuilder = (_req: express.Request, res: express.Response) => res.sendFile(path.join(__dirname, 'public', 'builder.html'));
 app.get('/', sendBuilder);
 app.get('/builder', sendBuilder);
