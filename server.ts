@@ -4,7 +4,7 @@
  * 브라우저에서 LG.com 을 직접 부르면 CORS 에 막히므로 크롤링·이미지는 반드시
  * 서버를 거친다. 빌드 단계 없이 public 폴더를 그대로 내보낸다.
  *
- *   npm start   →  http://localhost:3010
+ *   npm start   →  http://localhost:3010  (빌더)
  */
 import express from 'express';
 import compression from 'compression';
@@ -72,8 +72,11 @@ app.post('/api/crawl-page', async (req, res) => {
 
 // ─── 정적 파일 ───────────────────────────────────────────────────────────────
 
-// Trade In-Up Builder — 새 빌더. /, /infill.html, /studio.html 테스트 페이지는 그대로 둔다.
-app.get('/builder', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'builder.html')));
+// 첫 화면 = Trade In-Up Builder (/builder 도 같은 페이지). 예전 테스트 페이지는
+// /composite.html(제품 합성), /infill.html, /studio.html 로 그대로 남는다.
+const sendBuilder = (_req: express.Request, res: express.Response) => res.sendFile(path.join(__dirname, 'public', 'builder.html'));
+app.get('/', sendBuilder);
+app.get('/builder', sendBuilder);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
