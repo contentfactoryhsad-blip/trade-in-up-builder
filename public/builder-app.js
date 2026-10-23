@@ -33,29 +33,46 @@ const ASSET_GROUPS = [
   // 라인(source/ 폴더)마다 한 줄, 파일명 순서대로. 캡션 = 파일명.
   // 팔레트는 제품이 있는 컷, 캔버스·패널은 제품을 얹을 빈 무대(-no product)
   // tones: 줄 제목 오른쪽에 Light / Dark 를 고를 수 있는 줄 (Basic 만)
-  { key: 'basic-01', label: 'Basic 01', tones: true, assets: [
-    // 둥근 단상 — 01-01 TV · 02-01 TV+구형 · 03-01 냉장고 · 04-02 냉장고+구형
-    // 01-01·02-01 은 제품 있는/없는 컷 차이로 원래 TV 자리를 쟀고, 03·04 는 냉장고 자리를 눈으로 쟀다
-    { id: 'b1-01-01', label: '01-01', stage: { cx: 0.461, bottom: 0.52, h: 0.098 } },
-    { id: 'b1-02-01', label: '02-01', stage: { cx: 0.517, bottom: 0.48, h: 0.072 } },
-    { id: 'b1-03-01', label: '03-01', stage: { cx: 0.462, bottom: 0.546, h: 0.184 } },
-    { id: 'b1-04-02', label: '04-02', stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
+  { key: 'basic-01', label: 'Basic 01', tones: true, bgColors: true, assets: [
+    // 둥근 단상 (source/1023 정리/trade in/basic 1) — 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형
+    // 빈 무대 컷이 없어 제품 자리는 새 컷에서 눈으로 쟀다
+    { id: 'b1-01-01', label: '01-01', stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
+    { id: 'b1-01-02', label: '01-02', stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
+    // 냉장고 컷은 위가 높아 캔버스 미리보기 창을 조금 올린다 (previewCy — build-assets.sh 미리보기 세로 중심과 같은 값)
+    { id: 'b1-02-01', label: '02-01', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
+    { id: 'b1-02-02', label: '02-02', previewCy: 0.47, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
   ] },
-  { key: 'basic-02', label: 'Basic 02', tones: true, assets: [
+  { key: 'basic-02', label: 'Basic 02', tones: true, bgColors: true, assets: [
     // 흰 계단 단상 — 01-0N TV · 02-0N 냉장고. 빈 무대 컷이 아직 없어 자리는 눈으로 쟀다
-    { id: 'b2-01-01', label: '01-01', stage: { cx: 0.537, bottom: 0.452, h: 0.068 } },
-    { id: 'b2-01-02', label: '01-02', stage: { cx: 0.567, bottom: 0.452, h: 0.068 } },
-    { id: 'b2-02-01', label: '02-01', stage: { cx: 0.543, bottom: 0.5, h: 0.136 } },
-    { id: 'b2-02-02', label: '02-02', stage: { cx: 0.563, bottom: 0.5, h: 0.136 } },
+    // stageBy — 버전마다 컷이 달라 제품 자리가 다른 경우 (Trade In 은 thumbnail 과 빈 무대 차이로 쟀다)
+    { id: 'b2-01-01', label: '01-01', previewCyBy: { in: 0.48 }, stage: { cx: 0.537, bottom: 0.452, h: 0.068 }, stageBy: { in: { cx: 0.536, bottom: 0.48, h: 0.071 } } },
+    { id: 'b2-01-02', label: '01-02', previewCyBy: { in: 0.48 }, stage: { cx: 0.567, bottom: 0.452, h: 0.068 }, stageBy: { in: { cx: 0.556, bottom: 0.48, h: 0.071 } } },
+    // previewCyBy — Trade In 컷은 단상이 위에 걸려 보여 (TV 0.48 · 냉장고 0.47) 캔버스 미리보기 창을 올린다 (= 그림이 내려온다. build-assets.sh 와 같은 값)
+    { id: 'b2-02-01', label: '02-01', previewCyBy: { in: 0.47 }, stage: { cx: 0.543, bottom: 0.5, h: 0.136 } },
+    { id: 'b2-02-02', label: '02-02', previewCyBy: { in: 0.47 }, stage: { cx: 0.563, bottom: 0.5, h: 0.136 } },
   ] },
-  { key: 'eco', label: 'Eco', assets: [
-    { id: 'eco-01', label: 'Eco 01' },
-    { id: 'eco-02', label: 'Eco 02' },
+  // source/1023 정리/<trade in|trade up>/slot — 02 만 둔다 (01 은 사이즈 베리에이션 때)
+  // -eco 는 박스로 늘리지 않고 Edit panel Background Color 의 07 Eco 로 고른다
+  { key: 'slot', label: 'Slot', bgColors: true, assets: [
+    // 팔레트 박스에는 이름을 달지 않는다 (noCaption) — 패널·캔버스 이름은 label
+    { id: 'slot-02', label: 'Slot 02', noCaption: true },
   ] },
-  { key: 'slot', label: 'Slot', assets: [
-    { id: 'slot-01', label: 'Slot 01' },
-    { id: 'slot-02', label: 'Slot 02' },
-  ] },
+];
+
+/**
+ * Background Color — Edit panel 이미지 아래에서 고르는 배경 컬러 칸 (Basic 01·02, Slot).
+ * 칸 그림은 에셋의 컬러 부분을 잘라 둔 swatch (build-assets.sh SWATCH) — 없는 칸은 빈 점선 원.
+ *   01 Standard = 원래 에셋, 02~06 = -color-01~05 컷, 07 Eco = -eco 컷 (컬러 + 우드 아이콘).
+ *   그 변형이 구워져 있지 않은 에셋은 칸을 골라도 원래 컷 그대로 (빈 점선 원)
+ */
+const BG_COLORS = [
+  { key: 'c1', label: '01', name: 'Standard', color: null },
+  { key: 'c2', label: '02', suffix: '-color-01' },
+  { key: 'c3', label: '03', suffix: '-color-02' },
+  { key: 'c4', label: '04', suffix: '-color-03' },
+  { key: 'c5', label: '05', suffix: '-color-04' },
+  { key: 'c6', label: '06', suffix: '-color-05' },
+  { key: 'c7', label: '07', name: 'Eco', suffix: '-eco' },
 ];
 
 /** 버전 — 왼쪽 팔레트 맨 위에서 고른다. */
@@ -74,19 +91,30 @@ const TONES = [
 ];
 const toneOf = groupKey => (ASSET_GROUPS.find(g => g.key === groupKey)?.tones && state.tone[groupKey]) || 'light';
 
+/** 버전·톤까지 붙인 기본 에셋 id (Background Color 변형 전) */
+const plainId = (v, groupKey, base) => `${v}-${base}${toneOf(groupKey) === 'dark' ? '-dark' : ''}`;
+/** 고른 Background Color 칸의 변형(-eco 등)이 구워져 있으면 그 id, 아니면 기본 id */
+const assetId = (v, groupKey, base) => {
+  const id = plainId(v, groupKey, base);
+  const sfx = BG_COLORS.find(c => c.key === state.bgColor)?.suffix;
+  return sfx && manifest.has(id + sfx) ? id + sfx : id;
+};
+
 /** 한 버전의 팔레트 줄 — 공용 목록에 버전·톤 id, 그림 유무, 원본 크기를 입힌다. */
 const groupsFor = v => ASSET_GROUPS.map(g => ({
   ...g,
   tone: toneOf(g.key),
   assets: g.assets.map(a => {
-    const id = `${v}-${a.id}${toneOf(g.key) === 'dark' ? '-dark' : ''}`;
+    const id = assetId(v, g.key, a.id);
+    // 팔레트 썸네일은 변형(Eco 등)을 골라도 바뀌지 않는다 — 언제나 기본 컷
+    const thumbId = plainId(v, g.key, a.id);
     const m = manifest.get(id);
-    return { ...a, base: a.id, version: v, id, art: !!m, size: m ? [m.w, m.h] : null };
+    return { ...a, base: a.id, version: v, id, thumbId, stage: a.stageBy?.[v] ?? a.stage, previewCy: a.previewCyBy?.[v] ?? a.previewCy, art: !!m, size: m ? [m.w, m.h] : null };
   }),
 }));
 
 const ASSET_DIR = 'assets/trade-in-up';
-const thumbUrl = a => `${ASSET_DIR}/${a.id}-thumb.jpg`;
+const thumbUrl = a => `${ASSET_DIR}/${a.thumbId || a.id}-thumb.jpg`;
 const previewUrl = a => `${ASSET_DIR}/${a.id}-preview.jpg`;
 const frameUrl = a => `${ASSET_DIR}/${a.id}-frame.jpg`;
 const stageUrl = a => `${ASSET_DIR}/${a.id}-stage.jpg`;
@@ -115,8 +143,8 @@ const findAsset = id => {
 /** Edit panel 의 접이식 기능 박스. */
 const EDIT_SECTIONS = [
   { key: 'product', title: 'Product & Shadow', desc: 'Import a product, place it on the stage and add a ground shadow.' },
-  // 보류 — 배경 컬러를 고르는 방식으로 바꾸는 중. 지금 기능은 그대로 쓸 수 있다
-  { key: 'scene', title: 'Scene Color', badge: '보류중 - 배경 컬러 선택방식으로 교체중', desc: 'Fill the TV screen and tint the background to match it.' },
+  // 보류 — 배경 컬러를 고르는 방식으로 바꾸는 중. hidden: 빌더 화면에서만 숨긴다 (코드·기능은 그대로 — 다시 쓰려면 hidden 만 지운다)
+  { key: 'scene', title: 'Scene Color', hidden: true, badge: '보류중 - 배경 컬러 선택방식으로 교체중', desc: 'Fill the TV screen and tint the background to match it.' },
 ];
 
 /**
@@ -148,6 +176,7 @@ const newSlot = i => ({
 const state = {
   version: 'in',
   tone: {}, // 줄 key → 'light' | 'dark' (없으면 light)
+  bgColor: 'c1', // 고른 Background Color 칸 key — 01 Standard 가 기본
   selectedId: null,
   open: new Set(),
   bg: null,
@@ -196,12 +225,13 @@ function productRect(slot) {
   return { x: cx - w / 2, y: bottom - h, w, h };
 }
 
-/** 미리보기 창 (배경 픽셀) — 가운데에서 원본 높이의 1/PREVIEW_ZOOM. */
+/** 미리보기 창 (배경 픽셀) — 원본 높이의 1/PREVIEW_ZOOM. 세로 중심은 에셋의 previewCy (기본 가운데). */
 function previewWindow() {
   const { w, h } = state.bg;
   const ch = h / PREVIEW_ZOOM;
   const cw = Math.min(w, ch * PREVIEW_RATIO);
-  return { x: (w - cw) / 2, y: (h - ch) / 2, w: cw, h: ch };
+  const cy = findAsset(state.selectedId)?.asset.previewCy ?? 0.5;
+  return { x: (w - cw) / 2, y: cy * h - ch / 2, w: cw, h: ch };
 }
 
 // ── 렌더 (에셋을 고를 때 화면 뼈대를 다시 만든다) ─────────────────
@@ -238,7 +268,7 @@ function renderPalette() {
         ${g.assets.map(a => `
           <button type="button" class="tb-cell${state.selectedId === a.id ? ' selected' : ''}" data-id="${a.id}">
             <span class="tb-tile${a.art ? ' has-art' : ''}">${a.art ? `<img src="${thumbUrl(a)}" alt="${esc(a.label)}" loading="lazy" draggable="false" />` : ''}</span>
-            <span class="tb-caption">${esc(a.label)}</span>
+            ${a.noCaption ? '' : `<span class="tb-caption">${esc(a.label)}</span>`}
           </button>`).join('')}
       </div>
     </section>`).join('');
@@ -295,9 +325,25 @@ function renderEdit() {
       <p class="name">${esc(asset.label)}</p>
       <p class="meta">${esc(versionLabel(asset.version))} · ${esc(group.label)}${asset.size ? ` · ${asset.size[0]} × ${asset.size[1]}` : ''}</p>
       ${asset.art ? `<div class="tb-edit-frame"><img src="${frameUrl(asset)}" alt="${esc(asset.label)}" draggable="false" /><canvas id="frameView" hidden></canvas></div>` : ''}
+      ${group.bgColors ? `
+        <div class="tb-bgcolor">
+          <p class="tb-acc-item-label">Background Color</p>
+          <div class="tb-bgcolor-row" role="radiogroup" aria-label="Background color">
+            ${BG_COLORS.map(c => {
+              // 칸 그림 — 이 에셋(버전·톤)의 그 변형에서 잘라 둔 컬러 조각
+              const sid = (c.key === 'c1' || c.suffix) ? plainId(asset.version, group.key, asset.base) + (c.suffix || '') : null;
+              const sw = sid && manifest.get(sid)?.swatch ? `${ASSET_DIR}/${sid}-swatch.jpg` : null;
+              return `
+              <button type="button" role="radio" class="tb-bgcolor-item${state.bgColor === c.key ? ' on' : ''}" aria-checked="${state.bgColor === c.key}" data-bgcolor="${c.key}">
+                <span class="tb-bgcolor-dot${sw ? '' : ' empty'}"${sw ? ` style="background-image:url('${sw}')"` : ''}></span>
+                <span class="tb-bgcolor-label">${c.label}${c.name ? `<br>${esc(c.name)}` : ''}</span>
+              </button>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
     </div>
     ${EDIT_SECTIONS.map(sec => `
-      <section class="tb-acc${state.open.has(sec.key) ? ' open' : ''}" data-key="${sec.key}">
+      <section class="tb-acc${state.open.has(sec.key) ? ' open' : ''}" data-key="${sec.key}"${sec.hidden ? ' hidden style="display:none"' : ''}>
         <button type="button" class="tb-acc-head" aria-expanded="${state.open.has(sec.key)}">
           <span class="tb-acc-text">
             <span class="tb-acc-title">${esc(sec.title)}</span>
@@ -474,21 +520,56 @@ async function loadStage(asset) {
   try {
     const img = await loadImage(stageUrl(asset));
     if (state.selectedId !== asset.id) return; // 읽는 사이 다른 에셋을 골랐다
-    const w = img.naturalWidth, h = img.naturalHeight;
-    // 지운 자리는 배경 좌표라 다른 배경에서는 의미가 없다
-    if (state.bg) state.slots.forEach(s => { s.eraser = null; });
-    const px = createBackground(img);
-    state.bg = { assetId: asset.id, id: Date.now(), w, h, px };
-    // 색 보정이 읽을 형태 (readImage 와 같은 모양)
-    state.bg.scene = { canvas: img, w, h, data: new ImageData(new Uint8ClampedArray(px.data), w, h) };
-    // 단상·소품 같은 배경 속 오브젝트를 바로 한 번 나눠 둔다
-    state.objects = detectObjects(state.bg.scene, null);
-    state.objVersion++;
+    useStage(asset, img);
     showScene();
   } catch (err) {
     console.error(err);
     setStatus(`Could not load the stage image: ${err.message}`, true);
   }
+}
+
+/** 읽어 온 무대 그림을 합성 바탕으로 삼는다. */
+function useStage(asset, img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  // 지운 자리는 배경 좌표라 다른 배경에서는 의미가 없다
+  if (state.bg) state.slots.forEach(s => { s.eraser = null; });
+  const px = createBackground(img);
+  state.bg = { assetId: asset.id, id: Date.now(), w, h, px };
+  // 색 보정이 읽을 형태 (readImage 와 같은 모양)
+  state.bg.scene = { canvas: img, w, h, data: new ImageData(new Uint8ClampedArray(px.data), w, h) };
+  // 단상·소품 같은 배경 속 오브젝트를 바로 한 번 나눠 둔다
+  state.objects = detectObjects(state.bg.scene, null);
+  state.objVersion++;
+}
+
+/**
+ * 톤·버전·배경색 전환 — 새로 보일 그림(팔레트 썸네일·미리보기·프레임·무대)을 먼저 다 읽어 두고 한 번에 바꾼다.
+ * 바로 다시 그리면 새 그림이 오는 동안 빈칸 → 미리보기 → 합성 순으로 비쳐 깜빡인다.
+ * apply 는 상태를 바꾸는 함수, next 는 바뀐 상태에서 옮겨 갈 박스 id 를 내는 함수 (없으면 팔레트만 다시 그린다).
+ * 썸네일 주소가 새 상태에서 나오므로 apply 를 먼저 부르고, 화면은 다 읽은 뒤 그린다.
+ */
+let swapSeq = 0;
+/** 누른 버튼은 그림을 기다리지 않고 바로 켠다. */
+const markOn = (btn, aria) => btn.parentElement.querySelectorAll(':scope > button').forEach(b => {
+  b.classList.toggle('on', b === btn);
+  b.setAttribute(aria, String(b === btn));
+});
+async function swapTo(apply, next) {
+  const seq = ++swapSeq;
+  apply();
+  const nextId = next ? next() : null;
+  const urls = groupsFor(state.version).flatMap(g => g.assets.filter(a => a.art).map(thumbUrl));
+  const hit = nextId && findAsset(nextId);
+  if (hit?.asset.art) urls.push(previewUrl(hit.asset), frameUrl(hit.asset));
+  const decode = src => loadImage(src).then(img => img.decode?.().catch(() => {}).then(() => img)).catch(() => null);
+  const [stage] = await Promise.all([
+    hit?.asset.art && state.bg?.assetId !== hit.asset.id ? decode(stageUrl(hit.asset)) : null,
+    ...urls.map(decode),
+  ]);
+  if (seq !== swapSeq) return; // 기다리는 사이 또 바꿨다 — 마지막 것만 그린다
+  if (!nextId) return renderPalette();
+  if (stage) useStage(hit.asset, stage);
+  selectAsset(nextId);
 }
 
 /** 합성 캔버스를 바탕 크기로 맞추고 미리보기 창만큼 잘라 보이게 놓는다. */
@@ -1104,11 +1185,10 @@ $('#palette').addEventListener('click', e => {
   if (vb) {
     const v = vb.dataset.version;
     if (v === state.version) return;
-    state.version = v;
     // 고른 박스가 있으면 다른 버전의 같은 자리로 옮겨 간다 — 제품·설정은 그대로
     const cur = findAsset(state.selectedId);
-    if (cur) selectAsset(`${v}-${cur.asset.base}${cur.group.tone === 'dark' ? '-dark' : ''}`);
-    else renderPalette();
+    markOn(vb, 'aria-selected');
+    void swapTo(() => { state.version = v; }, cur && (() => assetId(v, cur.group.key, cur.asset.base)));
     return;
   }
   const tb = e.target.closest('[data-tone]');
@@ -1117,9 +1197,8 @@ $('#palette').addEventListener('click', e => {
     if (toneOf(group) === tone) return;
     // 고른 박스가 이 줄에 있으면 같은 자리의 다른 톤으로 옮겨 간다 — 제품·설정은 그대로
     const cur = findAsset(state.selectedId);
-    state.tone[group] = tone;
-    if (cur && cur.group.key === group) selectAsset(`${cur.asset.version}-${cur.asset.base}${tone === 'dark' ? '-dark' : ''}`);
-    else renderPalette();
+    markOn(tb, 'aria-checked');
+    void swapTo(() => { state.tone[group] = tone; }, cur?.group.key === group && (() => assetId(cur.asset.version, group, cur.asset.base)));
     return;
   }
   const cell = e.target.closest('.tb-cell');
@@ -1141,6 +1220,21 @@ editBody.addEventListener('click', e => {
     sec.classList.toggle('open', open);
     head.setAttribute('aria-expanded', String(open));
     syncScene();
+    return;
+  }
+
+  // Background Color 칸 — 변형 컷(07 Eco 등)이 있는 에셋이면 그 컷으로 갈아 끼운다. 제품·설정은 그대로
+  const dot = e.target.closest('[data-bgcolor]');
+  if (dot) {
+    const cur = findAsset(state.selectedId);
+    state.bgColor = dot.dataset.bgcolor;
+    const next = cur && assetId(cur.asset.version, cur.group.key, cur.asset.base);
+    if (next && next !== state.selectedId) { void swapTo(() => {}, () => next); return; }
+    document.querySelectorAll('[data-bgcolor]').forEach(b => {
+      const on = b.dataset.bgcolor === state.bgColor;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', String(on));
+    });
     return;
   }
 
