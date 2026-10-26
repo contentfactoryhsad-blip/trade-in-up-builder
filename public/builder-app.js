@@ -42,7 +42,8 @@ const ASSET_GROUPS = [
     { id: 'b1-02-01', label: '02-01', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
     { id: 'b1-02-02', label: '02-02', previewCy: 0.47, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
   ] },
-  { key: 'basic-02', label: 'Basic 02', tones: true, bgColors: true, assets: [
+  // hidden — 시안 정리로 빌더 팔레트에서만 숨긴다 (에셋·설정은 그대로 — 다시 쓰려면 hidden 만 지운다)
+  { key: 'basic-02', label: 'Basic 02', hidden: true, tones: true, bgColors: true, assets: [
     // 흰 계단 단상 — 01-0N TV · 02-0N 냉장고. 빈 무대 컷이 아직 없어 자리는 눈으로 쟀다
     // stageBy — 버전마다 컷이 달라 제품 자리가 다른 경우 (Trade In 은 thumbnail 과 빈 무대 차이로 쟀다)
     { id: 'b2-01-01', label: '01-01', previewCyBy: { in: 0.48 }, stage: { cx: 0.537, bottom: 0.452, h: 0.068 }, stageBy: { in: { cx: 0.536, bottom: 0.48, h: 0.071 } } },
@@ -253,7 +254,7 @@ function renderPalette() {
     <div class="seg tb-version" role="tablist" aria-label="Version">
       ${VERSIONS.map(v => `<button type="button" role="tab" data-version="${v.key}" class="${state.version === v.key ? 'on' : ''}" aria-selected="${state.version === v.key}">${v.label}</button>`).join('')}
     </div>`;
-  $('#palette').innerHTML = versionSeg + groupsFor(state.version).map(g => `
+  $('#palette').innerHTML = versionSeg + groupsFor(state.version).filter(g => !g.hidden).map(g => `
     <section class="tb-group">
       <div class="tb-group-head">
         <p class="tb-group-label">${esc(g.label)}</p>
@@ -558,7 +559,7 @@ async function swapTo(apply, next) {
   const seq = ++swapSeq;
   apply();
   const nextId = next ? next() : null;
-  const urls = groupsFor(state.version).flatMap(g => g.assets.filter(a => a.art).map(thumbUrl));
+  const urls = groupsFor(state.version).filter(g => !g.hidden).flatMap(g => g.assets.filter(a => a.art).map(thumbUrl));
   const hit = nextId && findAsset(nextId);
   if (hit?.asset.art) urls.push(previewUrl(hit.asset), frameUrl(hit.asset));
   const decode = src => loadImage(src).then(img => img.decode?.().catch(() => {}).then(() => img)).catch(() => null);
