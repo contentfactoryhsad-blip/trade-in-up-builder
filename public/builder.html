@@ -13,11 +13,12 @@
   <!-- 뼈대는 08 black friday/lg-bf-builder 의 Content Banner Builder
        (헤더 / 내비 레일 / 팔레트 / 캔버스 / Edit panel) 를 그대로 옮겼다. -->
   <header class="app-header tb-header">
-    <a class="brand" href="builder.html" aria-label="Home">
-      <img src="lg-logo.svg" alt="LG" />
+    <!-- LG 로고는 Builder Hub 로, 이름은 이 빌더 첫 화면으로 -->
+    <div class="brand">
+      <a class="brand-link" href="https://builder-hub.lge-d2c.com" aria-label="Builder Hub" title="Builder Hub"><img src="lg-logo.svg" alt="LG" /></a>
       <span class="divider"></span>
-      <span class="title">Trade In-Up Builder</span>
-    </a>
+      <a class="brand-link title" href="builder.html" aria-label="Home">Trade In-Up Builder</a>
+    </div>
 
     <div class="tb-steps" id="steps"></div>
 
