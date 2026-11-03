@@ -99,3 +99,26 @@
 @keyframes pi-ants { to { stroke-dashoffset: -9; } }
 .pi-sel .pi-sel-start { fill: #fff; stroke: #111; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .pi-sel .pi-sel-start.hot { fill: var(--pi-accent); }
+
+/* 고정 프레임 크롭 (블프 빌더와 같은 모양) — 프레임 가운데 고정, 이미지를 끌고 줌으로 크기 */
+.pi-fcrop { width: 660px; max-width: 100%; }
+.pi-fcrop-view { position: relative; overflow: hidden; cursor: grab; touch-action: none; user-select: none; background: repeating-conic-gradient(#555 0% 25%, #333 0% 50%) 0 0 / 24px 24px; }
+.pi-fcrop-view:active { cursor: grabbing; }
+.pi-fcrop-img { position: absolute; max-width: none; pointer-events: none; }
+.pi-fcrop-frame { position: absolute; border: 2px solid var(--pi-accent); box-shadow: 0 0 0 9999px rgb(0 0 0 / .45); pointer-events: none; box-sizing: border-box; }
+.pi-fcrop-frame i { position: absolute; background: rgb(255 255 255 / .55); }
+.pi-fcrop-frame .v1, .pi-fcrop-frame .v2 { top: 0; bottom: 0; width: 1px; }
+.pi-fcrop-frame .h1, .pi-fcrop-frame .h2 { left: 0; right: 0; height: 1px; }
+.pi-fcrop-frame .v1 { left: 33.33%; } .pi-fcrop-frame .v2 { left: 66.66%; }
+.pi-fcrop-frame .h1 { top: 33.33%; } .pi-fcrop-frame .h2 { top: 66.66%; }
+.pi-fcrop-zoom { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #F8F7F5; }
+.pi-fcrop-zbtn { display: flex; padding: 0; border: 0; background: none; color: #8A8078; cursor: pointer; }
+.pi-fcrop-zbtn:hover { color: var(--pi-accent); }
+.pi-fcrop-zoom input[type=range] {
+  flex: 1; height: 6px; appearance: none; -webkit-appearance: none; border-radius: 3px; cursor: pointer;
+  background: linear-gradient(to right, var(--pi-accent) var(--p, 0%), #DDD9D3 var(--p, 0%));
+}
+.pi-fcrop-zoom input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--pi-accent); border: 0; }
+.pi-fcrop-zoom input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--pi-accent); border: 0; }
+.pi-fcrop-pct { min-width: 44px; text-align: right; font-size: 13px; color: #6B625B; }
+.pi-fcrop .pi-btn { display: inline-flex; align-items: center; gap: 6px; }

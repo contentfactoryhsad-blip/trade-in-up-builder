@@ -174,10 +174,12 @@ const findAsset = id => {
 
 /**
  * i 동그라미 안내 (크리스마스 빌더와 같다) — 올리면 그림·영상 + 제목 + 설명 창이 뜨고, 누르면 고정된다.
- * img·video: 안내 그림·영상 경로 (assets/trade-in-up/ 기준, 영상은 소리 없이 반복). 둘 다 없으면 회색 자리만 보인다 — 영상은 나중에 넣는다
+ * img·video: 안내 그림·영상 경로 (assets/trade-in-up/ 기준, 영상은 소리 없이 반복). 둘 다 없으면 회색 자리만 보인다
+ * 영상 원본은 source/호버/<이름>.mov — ffmpeg 로 1.5배속·폭 640·30fps·소리 없는 mp4 로 줄여 info/ 에 둔다
  */
+// video 끝 ?v= — 영상을 바꾸면 숫자를 올린다 (브라우저가 옛 영상을 붙들고 있지 않게)
 const INFO = {
-  product: { title: 'Product & Shadow', video: null, img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. Move, resize or delete it on the preview, and open Shadow under each product to fine-tune its shadow.' },
+  product: { title: 'Product & Shadow', video: 'info/product-shadow.mp4?v=2', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then move, resize and add shadows to it freely — on the preview and in the Edit panel on the right.' }, // 크리스마스 빌더 Product image 설명 그대로
 };
 const infoDot = key => `<span class="tb-info" data-info="${key}" role="button" tabindex="0" aria-label="About ${esc(INFO[key].title)}">i</span>`;
 
@@ -264,8 +266,8 @@ function setStatus(msg, isError = false, where = 'product') {
  * 제품이 놓일 사각형 (배경 픽셀). 발끝을 바닥선에 맞추고 가로 중심에 세운다.
  * 크기를 바꾸면 발끝이 그대로인 채 커지고 작아진다 — 단상 위에 선 채로.
  */
-/** 박스 안 여백 — 제품이 박스 테두리에 붙지 않게 (박스 짧은 변 대비) */
-const BOX_PAD = 0.1;
+/** 박스 안 여백 — 0: 크롭(정사각 프레임 + 줌)에서 정한 여백이 그대로 박스 안 크기가 된다 (블프 PD Slot 과 같다) */
+const BOX_PAD = 0;
 
 function productRect(slot) {
   const hit = findAsset(state.selectedId);
@@ -1475,14 +1477,14 @@ editBody.addEventListener('click', e => {
       update();
       break;
     case 'edit':
-      if (slot.product) runImport(i, () => editProduct(slot.product), slot.product);
+      if (slot.product) runImport(i, () => editProduct(slot.product, { box: boxMode() }), slot.product);
       break;
     case 'remove':
       slot.product = null;
       update();
       break;
     case 'change':
-      runImport(i, () => importFromUrl(slot.url, { images: slot.product?.images }), slot.product);
+      runImport(i, () => importFromUrl(slot.url, { images: slot.product?.images, box: boxMode() }), slot.product);
       break;
     case 'fx-open':
       // 같은 줄을 다시 누르면 접는다, 다른 줄이면 그 줄을 고르고 펼친다
@@ -1528,7 +1530,7 @@ editBody.addEventListener('submit', e => {
   if (!form) return;
   e.preventDefault();
   const i = Number(form.closest('.product-row').dataset.i);
-  runImport(i, () => importFromUrl(form.querySelector('input').value.trim()));
+  runImport(i, () => importFromUrl(form.querySelector('input').value.trim(), { box: boxMode() }));
 });
 
 editBody.addEventListener('input', e => {
@@ -1554,7 +1556,7 @@ editBody.addEventListener('change', async e => {
   t.value = '';
   if (!file) return;
   if (t.closest('.product-row')) {
-    runImport(Number(t.closest('.product-row').dataset.i), () => importFromFile(file));
+    runImport(Number(t.closest('.product-row').dataset.i), () => importFromFile(file, { box: boxMode() }));
   }
 });
 

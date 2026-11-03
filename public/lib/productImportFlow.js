@@ -10,7 +10,7 @@ import { removeBackgroundAI } from './bgRemoval.js';
 import { scrapeProductImages, fetchAsDataUrl, blobToDataUrl, trimTransparent } from './productApi.js';
 import { openGalleryModal } from './galleryModal.js';
 import { openBrushMaskEditor } from './brushMaskEditor.js';
-import { openCropModal } from './cropModal.js';
+import { openCropModal, openFixedCropModal } from './cropModal.js';
 
 /**
  * 완성된 제품 이미지. 재편집을 위해 중간 단계를 같이 들고 있는다.
@@ -18,6 +18,7 @@ import { openCropModal } from './cropModal.js';
  *   original: string,   // 누끼 전 원본 (브러시 Restore 소스)
  *   brushed: string,    // 누끼 + 브러시까지 끝낸 것 (크롭 소스)
  *   cropRect: {x:number,y:number,w:number,h:number}|null,
+ *   boxFrame?: {ox:number,oy:number,zoom:number,aspect:number}, // box 크롭(고정 프레임)일 때 재편집 복원용
  *   src: string,        // 최종 (크롭 + 여백 정리) — 화면에 놓는 이미지
  *   w: number, h: number,
  *   meta?: { model: string, name: string },
@@ -39,25 +40,35 @@ function withBusy(message, fn) {
 }
 
 /** 원본 → 브러시 → 크롭. 어느 팝업이든 취소하면 null. */
-async function brushThenCrop(original, processed, prevCropRect = null) {
+async function brushThenCrop(original, processed, prev = {}, box = false) {
   const brushed = await openBrushMaskEditor({ originalUrl: original, processedUrl: processed });
   if (!brushed) return null;
-  return cropAndTrim({ original, brushed, cropRect: prevCropRect });
+  return cropAndTrim({ original, brushed, cropRect: prev.cropRect ?? null, boxFrame: prev.boxFrame }, box);
 }
 
-async function cropAndTrim({ original, brushed, cropRect }) {
+/**
+ * box: 박스(Slot)에 넣는 제품 — 블프 PD Slot 처럼 정사각 고정 프레임에 줌으로 크기를 정하고,
+ * 그 여백(투명)까지 그대로 둔다 (박스 안 제품 크기 = 크롭에서 정한 크기). 아니면 자유 크롭 + 투명 여백 정리
+ */
+async function cropAndTrim({ original, brushed, cropRect, boxFrame }, box = false) {
+  if (box) {
+    const crop = await openFixedCropModal({ imageSrc: brushed, aspect: 1, initial: boxFrame });
+    if (!crop) return null;
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = crop.dataUrl; });
+    return { original, brushed, cropRect: null, boxFrame: crop.frame, src: crop.dataUrl, w: img.naturalWidth, h: img.naturalHeight };
+  }
   const crop = await openCropModal({ imageSrc: brushed, initialRect: cropRect });
   if (!crop) return null;
   const t = await trimTransparent(crop.dataUrl);
   return { original, brushed, cropRect: crop.rect, src: t.dataUrl, w: t.width, h: t.height };
 }
 
-async function fromSource(src, { removeBg = true } = {}) {
+async function fromSource(src, { removeBg = true, box = false } = {}) {
   const original = src.startsWith('data:') ? src : await withBusy('Loading image…', () => fetchAsDataUrl(src));
   const processed = removeBg
     ? await withBusy('Removing background…', () => removeBackgroundAI(original))
     : original;
-  return brushThenCrop(original, processed);
+  return brushThenCrop(original, processed, {}, box);
 }
 
 /**
@@ -65,7 +76,7 @@ async function fromSource(src, { removeBg = true } = {}) {
  * `images` 를 넘기면 다시 크롤링하지 않고 그 목록으로 갤러리를 연다 ("Change image").
  * @returns {Promise<ProductImage|null>}
  */
-export async function importFromUrl(url, { images, removeBg = true } = {}) {
+export async function importFromUrl(url, { images, removeBg = true, box = false } = {}) {
   let meta;
   const { pick, images: list } = await openGalleryModal(
     images?.length
@@ -79,23 +90,23 @@ export async function importFromUrl(url, { images, removeBg = true } = {}) {
         },
   );
   if (!pick) return null;
-  const out = await fromSource(pick.url, { removeBg });
+  const out = await fromSource(pick.url, { removeBg, box });
   return out && { ...out, meta, images: list };
 }
 
-/** 내 파일 → 편집 흐름. */
-export async function importFromFile(file, { removeBg = true } = {}) {
-  return fromSource(await blobToDataUrl(file), { removeBg });
+/** 내 파일 → 편집 흐름. box: 박스(Slot)용 고정 프레임 크롭 */
+export async function importFromFile(file, { removeBg = true, box = false } = {}) {
+  return fromSource(await blobToDataUrl(file), { removeBg, box });
 }
 
 /** 이미 넣은 제품을 다시 다듬는다 (브러시부터, 이전 크롭 프레임 유지). */
-export async function editProduct(product) {
-  const out = await brushThenCrop(product.original, product.brushed, product.cropRect);
+export async function editProduct(product, { box = false } = {}) {
+  const out = await brushThenCrop(product.original, product.brushed, product, box);
   return out && { ...product, ...out };
 }
 
 /** 크롭만 다시 한다. */
-export async function recropProduct(product) {
-  const out = await cropAndTrim(product);
+export async function recropProduct(product, { box = false } = {}) {
+  const out = await cropAndTrim(product, box);
   return out && { ...product, ...out };
 }
