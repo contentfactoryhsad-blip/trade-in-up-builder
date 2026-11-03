@@ -180,6 +180,7 @@ const findAsset = id => {
 // video 끝 ?v= — 영상을 바꾸면 숫자를 올린다 (브라우저가 옛 영상을 붙들고 있지 않게)
 const INFO = {
   product: { title: 'Product & Shadow', video: 'info/product-shadow.mp4?v=2', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then move, resize and add shadows to it freely — on the preview and in the Edit panel on the right.' }, // 크리스마스 빌더 Product image 설명 그대로
+  slot: { title: 'Products', video: 'info/product-slot.mp4?v=2', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then adjust its size and place it in each box.' },
 };
 const infoDot = key => `<span class="tb-info" data-info="${key}" role="button" tabindex="0" aria-label="About ${esc(INFO[key].title)}">i</span>`;
 
@@ -187,7 +188,8 @@ const infoDot = key => `<span class="tb-info" data-info="${key}" role="button" t
 const EDIT_SECTIONS = [
   // fixed: 늘 펼쳐 두고 접지 않는다
   // boxTitle·boxDesc: Slot 에셋(박스에 제품을 넣는 방식)일 때 바꿔 보이는 이름
-  { key: 'product', fixed: true, info: 'product', boxTitle: 'Products', boxDesc: 'Add a product to each box on the stage.', title: 'Product & Shadow', desc: 'Import a product, place it on the stage and add a ground shadow.' },
+  // boxInfo: Slot 에셋일 때의 i 안내 (그림자 없음)
+  { key: 'product', fixed: true, info: 'product', boxInfo: 'slot', boxTitle: 'Products', boxDesc: 'Add a product to each box on the stage.', title: 'Product & Shadow', desc: 'Import a product, place it on the stage and add a ground shadow.' },
   // 보류 — 배경 컬러를 고르는 방식으로 바꾸는 중. hidden: 빌더 화면에서만 숨긴다 (코드·기능은 그대로 — 다시 쓰려면 hidden 만 지운다)
   { key: 'scene', title: 'Scene Color', hidden: true, badge: '보류중 - 배경 컬러 선택방식으로 교체중', desc: 'Fill the TV screen and tint the background to match it.' },
 ];
@@ -499,7 +501,7 @@ function renderEdit() {
       <section class="tb-acc${state.open.has(sec.key) || sec.fixed ? ' open' : ''}${sec.fixed ? ' fixed' : ''}" data-key="${sec.key}"${sec.hidden ? ' hidden style="display:none"' : ''}>
         <button type="button" class="tb-acc-head" aria-expanded="${state.open.has(sec.key) || !!sec.fixed}"${sec.fixed ? ' tabindex="-1"' : ''}>
           <span class="tb-acc-text">
-            <span class="tb-acc-title">${esc(asset.boxes && sec.boxTitle || sec.title)}${sec.info && !asset.boxes ? infoDot(sec.info) : ''}</span>
+            <span class="tb-acc-title">${esc(asset.boxes && sec.boxTitle || sec.title)}${(asset.boxes ? sec.boxInfo : sec.info) ? infoDot(asset.boxes ? sec.boxInfo : sec.info) : ''}</span>
             ${sec.badge ? `<span class="tb-acc-badge">${esc(sec.badge)}</span>` : ''}
             <span class="tb-acc-desc">${esc(asset.boxes && sec.boxDesc || sec.desc)}</span>
           </span>
