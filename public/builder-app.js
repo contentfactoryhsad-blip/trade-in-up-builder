@@ -20,6 +20,8 @@ import { blobToDataUrl, loadImage } from './lib/productApi.js';
 import { importFromUrl, importFromFile, editProduct } from './lib/productImportFlow.js';
 import { DEFAULT_FX, cloneFx, createBackground, drawComposite } from './lib/composite.js';
 import { orderQuad, warpInfill, colorField, detectObjects, adjustBackground, glowLayer } from './lib/infill.js';
+import { slotsForChannel, drawSlot, logosReady, onIconLoad } from './lib/channelSlots.js';
+import { newCopyState, renderCopyPanel, bindCopyPanel } from './lib/channelCopy.js';
 
 /**
  * 팔레트 줄 — Trade In / Trade Up 두 버전이 같은 목록·배치를 쓴다 (아이콘 화살표만 다르다).
@@ -152,6 +154,8 @@ const CHANNEL_ROWS = [
   ['Rakuten', 'Venngo', 'Perkopolis', 'Awin', 'Data Audience', 'Vase kupony', 'Plna penezenka', 'Tipli', 'Taiwan Affiliate', 'Telus Health'],
 ].map(row => row.map(label => ({ key: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label })));
 
+const CHANNEL_KEYS = Object.fromEntries(CHANNEL_ROWS.flat().filter(c => c.key !== 'all').map(c => [c.key, c.label]));
+
 // 헤더 Working Files 버튼 링크 — 비어 있으면 흐린 채로 눌리지 않는다 (링크는 나중에)
 const WORKING_FILES_URL = '';
 
@@ -228,6 +232,7 @@ const state = {
   selectedId: null,
   step: 0, // 상단 스텝 (0 부터) — 에셋을 고르면 1, 미리보기 아래 OK 를 누르면 2
   channel: null, // 3 단계에서 고른 매체 key
+  copy: newCopyState(), // 매체를 고르면 Edit panel 에 뜨는 Copy 값 (lib/channelCopy.js) — 매체를 바꿔도 이어진다
   open: new Set(['product']), // Product & Shadow 는 늘 펼쳐 둔다 (EDIT_SECTIONS fixed)
   fxOpen: false, // 고른 제품 줄 아래 Shadow 드롭다운을 펼쳤나
   guide: false, // 프리뷰에서 고른 제품에 크기 조절 상자를 띄웠나 (배경을 누르면 끈다)
@@ -328,12 +333,16 @@ function syncStepLock() {
   $('#overlay')?.classList.toggle('locked', state.step !== 1);
   const gate = $('#channelGate'), body = $('#channelBody');
   if (gate && body) { gate.hidden = state.step >= 2; body.hidden = state.step < 2; }
+  renderSlots();
 }
 
 /** 스텝을 누르면 그 화면으로 — 1 팔레트, 2 Edit panel 의 Product & Shadow, 3 미리보기 아래 매체 */
 function goStep(i) {
+  const changed = state.step !== i;
   state.step = i;
   renderSteps();
+  // 단계가 바뀌면 Edit panel 도 — 2 단계에만 Background Color, 3 단계에서 매체를 골랐으면 Copy 패널
+  if (changed && state.selectedId) { renderEdit(); buildProductList(); update(); }
   if (i === 0) {
     const cell = $('#palette .tb-cell.selected') || $('#palette .tb-cell');
     cell?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -453,10 +462,104 @@ function channelPicker() {
               ${row.map(c => `<button type="button" class="tb-channel${state.channel === c.key ? ' on' : ''}" data-channel="${c.key}">${esc(c.label)}</button>`).join('')}
             </div>`).join('')}
         </div>
-        <p class="tb-slots-empty">Sizes for each channel are coming soon.</p>
       </div>
-    </div>`;
+    </div>
+    <div class="tb-slots" id="slots" hidden></div>`;
 }
+
+/**
+ * 매체 사이즈 미리보기 — 3 단계에서 고른 매체의 사이즈를 미리보기 아래에 모두 그린다 (lib/channelSlots.js, 크리스마스 빌더와 같다).
+ * Main Key Visual 의 Wide Product 01 · 02 는 Figma "Trade In Up - Main Key Visual 01" 보드, Tall Product 01 · 02 는 "… 02" 보드 데이터.
+ * 바탕은 제품까지 합성한 3000² 완성 컷(#comp). 컬러·톤이 바뀌어도 빈 영역은 그 컷의 가장자리로, 그라데이션은 그 컷의 벽 색으로 맞춘다.
+ * 카피는 매체를 고르면 Edit panel 에 뜨는 Copy 패널(state.copy) 값 — 비어 있으면 Figma 자리 표시 문구.
+ */
+// 에셋 → 보드 (true = Tall)
+const SLOT_ASSETS = new Map([['b1-01-01', false], ['b1-01-02', false], ['b1-02-01', true], ['b1-02-02', true]]);
+// LG.com 은 히어로 두 장(1920×720 → 720×960)을 맨 앞에
+const HERO_PC = 'lgcom-ST0001-pc-1920x720', HERO_MO = 'lgcom-ST0001-mo-720x960';
+const heroFirst = list => [...list.filter(s => s.key === HERO_PC), ...list.filter(s => s.key === HERO_MO), ...list.filter(s => s.key !== HERO_PC && s.key !== HERO_MO)];
+
+/**
+ * 그라데이션 색 — Figma 의 #9C9185 는 기본 컷(Standard Light) 벽 색 (218,211,203) 에서 채널마다 이 비율만큼 어두운 색이다.
+ * 다른 컬러·톤은 그 컷의 벽 색에서 같은 방향으로 FADE_DEPTH 만큼만 (너무 어둡지 않게 — 사용자 요청) 어둡게 한다
+ */
+const FADE_RATIO = [156 / 218.4, 145 / 210.5, 133 / 202.8];
+const FADE_DEPTH = 0.7;
+let artVersion = 0;
+function fadeColorFor(comp) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 300;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(comp, 0, 0, 300, 300);
+  // 벽 — 왼쪽 위 (제품이 들어오지 않는 자리, 위 기준값을 잰 곳과 같다)
+  const d = g.getImageData(15, 15, 75, 75).data;
+  const sum = [0, 0, 0];
+  for (let i = 0; i < d.length; i += 4) { sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2]; }
+  const n = d.length / 4;
+  const base = state.bgColor === 'c1' && toneOf('basic-01') === 'light';
+  const k = base ? 1 : FADE_DEPTH;
+  return '#' + sum.map((v, i) => Math.round((v / n) * (1 - k * (1 - FADE_RATIO[i]))).toString(16).padStart(2, '0')).join('');
+}
+
+let slotsQueued = false;
+function renderSlots() {
+  if (slotsQueued) return;
+  slotsQueued = true;
+  requestAnimationFrame(() => {
+    slotsQueued = false;
+    const box = $('#slots');
+    if (!box) return;
+    const hit = findAsset(state.selectedId);
+    const on = state.step >= 2 && state.channel && hit;
+    box.hidden = !on;
+    if (!on) return;
+    if (!SLOT_ASSETS.has(hit.asset.base)) {
+      box.innerHTML = '<p class="tb-slots-empty">Sizes for this visual are coming soon.</p>';
+      box.dataset.keys = '';
+      return;
+    }
+    const tall = SLOT_ASSETS.get(hit.asset.base);
+    const slots = state.channel === 'all'
+      ? Object.keys(CHANNEL_KEYS).flatMap(k => heroFirst(slotsForChannel(k, tall)))
+      : heroFirst(slotsForChannel(state.channel, tall));
+    if (!slots.length) {
+      box.innerHTML = '<p class="tb-slots-empty">Sizes for this channel are coming soon.</p>';
+      box.dataset.keys = '';
+      return;
+    }
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // LG.com 히어로 두 장(1920×720 · 720×960)은 같은 높이로 한 줄에 나란히 — 미리보기 폭에 꽉 차게
+    const avail = Math.min(1200, box.clientWidth || 900);
+    const heroH = Math.min(720, (avail - 16) / (1920 / 720 + 720 / 960));
+    const keys = `${dpr}|${Math.round(heroH)}|${slots.map(sl => sl.key).join()}`;
+    if (box.dataset.keys !== keys) {
+      box.dataset.keys = keys;
+      box.innerHTML = slots.map((sl, i) => {
+        const hero = sl.key === HERO_PC || sl.key === HERO_MO;
+        const k = hero ? heroH / sl.h : Math.min(1, 360 / Math.max(sl.w, sl.h));
+        const head = state.channel === 'all' && sl.label !== slots[i - 1]?.label ? `<p class="tb-slots-group">${esc(sl.label)}</p>` : '';
+        return `${head}
+        <figure class="tb-slot">
+          <canvas width="${Math.round(sl.w * k * dpr)}" height="${Math.round(sl.h * k * dpr)}" data-slot="${esc(sl.key)}" style="width:${sl.w * k}px"></canvas>
+          <figcaption>${esc(sl.key)}</figcaption>
+        </figure>${sl.key === HERO_MO ? '<div class="tb-slots-break"></div>' : ''}`;
+      }).join('');
+    }
+    const comp = state.bg?.assetId === state.selectedId ? $('#comp') : null;
+    const fadeColor = comp ? fadeColorFor(comp) : null;
+    const canvases = box.querySelectorAll('canvas[data-slot]');
+    slots.forEach((sl, i) => {
+      const c = canvases[i];
+      if (!c) return;
+      const ctx = c.getContext('2d');
+      ctx.setTransform(c.width / sl.w, 0, 0, c.height / sl.h, 0, 0);
+      drawSlot(ctx, sl, comp, state.copy, { fadeColor, artVersion });
+    });
+  });
+}
+// 글꼴·로고가 늦게 읽히면 한 번 더
+Promise.all([document.fonts.load('600 20px "LGEI Headline"'), document.fonts.load('400 20px "LGEI Text"'), logosReady()]).then(() => renderSlots());
+onIconLoad(() => renderSlots());
 
 /** Product Slot 배치 넘기기 — Edit panel 이미지 양옆 화살표 + 아래 점. 넘기면 프리뷰·이미지가 그 배치로 바뀌고 제품은 그대로 */
 function layoutNav(asset) {
@@ -474,13 +577,19 @@ function renderEdit() {
     $('#editBody').innerHTML = '';
     return;
   }
+  // 매체를 골라 3 단계에 있으면 Edit panel 은 그 매체의 Copy 패널 (크리스마스 빌더와 같다)
+  const channel = state.step >= 2 && CHANNEL_ROWS.flat().find(c => c.key === state.channel);
+  if (channel) {
+    $('#editBody').innerHTML = renderCopyPanel(state.copy, channel);
+    return;
+  }
   const { asset, group } = hit;
   $('#editBody').innerHTML = `
     <div class="tb-edit-asset">
       <p class="name">${esc(asset.label)}</p>
       <p class="meta">${esc(versionLabel(asset.version))} · ${esc(group.label)}${asset.size ? ` · ${asset.size[0]} × ${asset.size[1]}` : ''}</p>
       ${asset.art ? `<div class="tb-edit-frame"><img src="${frameUrl(asset)}" alt="${esc(asset.label)}" draggable="false" /><canvas id="frameView" hidden></canvas>${layoutNav(asset)}</div>` : ''}
-      ${group.bgColors ? `
+      ${group.bgColors && state.step === 1 /* Background Color 는 2 단계(Image Edit)에서만 */ ? `
         <div class="tb-bgcolor">
           <p class="tb-acc-item-label">Background Color</p>
           <div class="tb-bgcolor-row" role="radiogroup" aria-label="Background color">
@@ -897,6 +1006,9 @@ function scheduleDraw() {
       }
     }
     drawEraseView();
+    // 합성이 바뀌었으니 매체 사이즈도 다시 (가장자리 사본도 새로 만든다)
+    artVersion++;
+    renderSlots();
   });
 }
 
@@ -1402,6 +1514,8 @@ $('#palette').addEventListener('click', e => {
 });
 
 const editBody = $('#editBody');
+// Copy 패널 입력 — 글자는 사이즈만 다시, 체크·로고·모드처럼 패널 모양이 바뀌는 건 패널까지 (크리스마스 빌더와 같다)
+bindCopyPanel(editBody, state.copy, () => { renderEdit(); renderSlots(); }, () => renderSlots());
 
 editBody.addEventListener('click', e => {
   // 기능 박스 펼치기/접기 — 다시 그리지 않고 클래스만 바꿔야 높이 전환이 보인다
@@ -1593,6 +1707,13 @@ canvasEl.addEventListener('click', e => {
   if (!btn) return;
   state.channel = state.channel === btn.dataset.channel ? null : btn.dataset.channel;
   canvasEl.querySelectorAll('[data-channel]').forEach(b => b.classList.toggle('on', b.dataset.channel === state.channel));
+  // 고르든 풀든 3 단계 — Edit panel 이 Copy 패널 ↔ 편집 박스로 바뀐다
+  state.step = 2;
+  renderSteps();
+  renderEdit();
+  buildProductList();
+  update();
+  renderSlots();
 });
 canvasEl.addEventListener('pointerdown', e => {
   const overlay = e.target.closest('#overlay');
