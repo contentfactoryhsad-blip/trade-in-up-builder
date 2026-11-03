@@ -8,6 +8,15 @@ body.tb { display: flex; flex-direction: column; height: 100vh; overflow: hidden
 .tb-header { position: relative; flex-shrink: 0; gap: 16px; }
 .tb-header .brand-link { display: flex; color: inherit; text-decoration: none; border-radius: 6px; transition: opacity .15s; }
 .tb-header .brand-link:hover { opacity: .7; }
+.tb-head-left { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.tb-back {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 999px; border: 1px solid var(--gray-300);
+  background: #fff; font: inherit; font-size: 14px; font-weight: 500; line-height: 20px; color: var(--gray-700);
+  cursor: pointer; transition: border-color .15s, color .15s, opacity .15s;
+}
+.tb-back:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.tb-back:disabled { opacity: .4; cursor: default; }
 
 .tb-pill {
   display: inline-flex; align-items: center; gap: 6px;
@@ -18,24 +27,32 @@ body.tb { display: flex; flex-direction: column; height: 100vh; overflow: hidden
 .tb-pill.outline-brand { border-color: var(--brand); color: var(--brand); }
 .tb-pill.outline-brand:hover:not(:disabled) { background: var(--brand); color: #fff; }
 .tb-pill:disabled { opacity: .4; pointer-events: none; }
+.tb-pill[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+a.tb-pill { text-decoration: none; }
+a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 
 /* 스텝 표시 — 헤더 전체 폭의 가운데 */
 .tb-steps {
   position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; min-width: 0;
 }
-.tb-step { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.tb-step { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.tb-step:disabled { cursor: default; }
+.tb-step:not(:disabled):not(.active):hover .tb-step-num { border-color: var(--gray-400); color: var(--gray-600); }
+.tb-step:not(:disabled):not(.active):hover .tb-step-label { color: var(--gray-600); }
 .tb-step-num {
   width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   border: 1.6px solid var(--gray-300); color: var(--gray-400); font-size: 15px; font-weight: 500;
 }
 .tb-step-label { font-size: 15px; color: var(--gray-400); white-space: nowrap; }
+.tb-step-text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.tb-step-hint { font-size: 11px; line-height: 14px; color: var(--gray-400); white-space: nowrap; }
 .tb-step.active .tb-step-num { border-style: dashed; border-color: var(--brand); color: var(--brand); }
 .tb-step.active .tb-step-label { color: var(--brand); font-weight: 500; }
 .tb-step-line { height: 1px; width: clamp(10px, 4vw, 110px); margin: 0 16px; background: var(--gray-300); flex-shrink: 1; }
 @media (max-width: 1279px) {
-  .tb-step-label { display: none; }
+  .tb-step-text { display: none; }
   .tb-step-line { margin: 0 8px; }
 }
 
@@ -96,6 +113,8 @@ body.tb { display: flex; flex-direction: column; height: 100vh; overflow: hidden
 .tb-cell.selected .tb-tile.has-art { border: 0; }
 .tb-caption { min-height: 12px; font-size: 10px; line-height: 12px; text-align: center; color: var(--gray-600); transition: color .15s; }
 .tb-cell.selected .tb-caption { color: var(--brand); font-weight: 500; }
+/* 박스 두 개 아래 작은 안내 (Wide / Tall Product) — 한 줄을 다 쓴다 */
+.tb-grid-note { grid-column: 1 / -1; margin: -2px 0 6px; font-size: 10px; line-height: 14px; color: #8A8078; }
 
 /* 캔버스 */
 .tb-canvas { flex: 1; overflow-y: auto; padding: 24px; background: var(--canvas); }
@@ -124,7 +143,7 @@ body.tb { display: flex; flex-direction: column; height: 100vh; overflow: hidden
 .tb-edit-asset { padding: 20px 20px 4px; }
 .tb-edit-asset .name { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
 .tb-edit-asset .meta { margin: 0; font-size: 12px; color: var(--gray-400); }
-.tb-edit-frame { margin-top: 16px; aspect-ratio: 1; border-radius: 8px; overflow: hidden; }
+.tb-edit-frame { position: relative; margin-top: 16px; aspect-ratio: 1; border-radius: 8px; overflow: hidden; }
 .tb-edit-frame img, .tb-edit-frame canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
 /* 접이식 기능 박스 — 머리를 누르면 아래로 펼쳐진다 (grid 0fr→1fr 로 높이 전환) */
 .tb-acc { margin: 16px 20px 0; border: 1px solid var(--gray-200); border-radius: 8px; background: #fff; transition: border-color .15s; }
@@ -229,3 +248,131 @@ body.tb { display: flex; flex-direction: column; height: 100vh; overflow: hidden
 .tb-bgcolor-item.on .tb-bgcolor-dot { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--brand); }
 .tb-bgcolor-label { font-size: 11px; line-height: 1.3; color: var(--gray-500); text-align: center; }
 .tb-bgcolor-item.on .tb-bgcolor-label { color: var(--brand); font-weight: 600; }
+
+/* ── 매체 고르기 (크리스마스 빌더와 같다) ────────────────── */
+/* 매체 알약 — 미리보기 아래 (BF 빌더 OutputPicker 와 같은 모양) */
+.tb-channels { margin: 16px auto 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tb-channels-label { margin: 0; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .025em; color: #8A8078; }
+/* 두 줄 — 줄마다 가운데 정렬, 칸이 모자라면 그 줄 안에서만 넘긴다 */
+.tb-channels-list { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tb-channels-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.tb-channel {
+  padding: 8px 15px; border: 1px solid var(--gray-300); border-radius: 999px; background: #fff;
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--gray-600); cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+}
+.tb-channel:hover { border-color: var(--gray-400); }
+.tb-channel.on { border-color: var(--brand); background: rgb(253 49 46 / .08); color: var(--brand); }
+/* 상단 스텝 3 을 누르면 매체 줄을 잠깐 짚어 준다 */
+.tb-channels.flash .tb-channels-list { animation: tb-flash 1.2s ease-out; }
+@keyframes tb-flash { 0%, 40% { box-shadow: 0 0 0 6px rgb(253 49 46 / .18); } 100% { box-shadow: 0 0 0 6px rgb(253 49 46 / 0); } }
+.tb-channels-list { border-radius: 24px; }
+.tb-channel-gate, .tb-channels-body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tb-channel-gate[hidden], .tb-channels-body[hidden] { display: none; }
+.tb-channel-open { min-width: 72px; padding: 0 20px; height: 32px; border-radius: 999px; font-size: 13px; }
+.tb-channels-note { margin: 0; max-width: 512px; font-size: 11px; line-height: 1.6; text-align: center; color: #8A8078; }
+.tb-slots-empty { margin: 0; padding: 24px 0; font-size: 13px; color: #8A8078; }
+
+/* 제품·오브젝트 장면도 같이 — 손잡이·끌기 커서가 안 뜬다 */
+.tb-scene .overlay.locked { pointer-events: none; }
+.tb-scene .overlay.locked #handles, .tb-scene .overlay.locked #brushCursor { display: none; }
+
+/* 2 단계(Image Edit) 안내 — CHANNEL 이름은 빼고, 안내 두 줄은 크게·검게 (채널 목록이 열린 3 단계는 그대로) */
+.tb-channels:has(#channelGate:not([hidden])) .tb-channels-label { display: none; }
+#channelGate .tb-channels-note { max-width: 760px; font-size: 18.7px; line-height: 1.5; letter-spacing: -.015em; color: #111; }
+/* 안내 글씨에 맞춘 OK 버튼 */
+#channelGate .tb-channel-open { min-width: 96px; height: 40px; padding: 0 28px; font-size: 16px; }
+#channelGate { gap: 14px; }
+
+/* ── 제품 줄마다 Shadow 드롭다운 (크리스마스 빌더와 같다) ────── */
+.product-row { flex-wrap: wrap; }
+.product-row > .tb-fx-head, .product-row > .tb-fx-slot { flex-basis: 100%; }
+.tb-fx-head {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; height: 32px; padding: 0 10px;
+  border: 1px solid var(--gray-200); border-radius: 8px; background: var(--gray-50); font: inherit; font-size: 12px; font-weight: 600; color: var(--gray-700); cursor: pointer;
+}
+.tb-fx-head:hover { border-color: var(--gray-300); }
+.tb-acc .tb-fx-head svg.tb-acc-chev { display: block; transform: none; color: var(--gray-400); }
+.tb-fx-head.open { border-color: var(--brand); color: var(--brand); }
+.tb-acc .tb-fx-head.open svg.tb-acc-chev { transform: rotate(180deg); color: var(--brand); }
+.tb-fx-slot:empty { display: none; }
+.tb-fx-drop { display: flex; flex-direction: column; gap: 12px; padding: 4px 2px 2px; }
+.tb-fx-drop[hidden] { display: none; }
+.tb-fx-drop .fx-card { padding: 10px 0 0; border: 0; border-top: 1px solid var(--gray-100); border-radius: 0; }
+.tb-fx-drop .fx-slider { grid-template-columns: 56px 1fr 28px; }
+/* Product & Shadow 는 늘 펼쳐 둔다 — 머리를 눌러도 접히지 않는다 */
+.tb-acc.fixed > .tb-acc-head { cursor: default; }
+.tb-acc.fixed > .tb-acc-head svg.tb-acc-chev { display: none; }
+
+/* No Old Product 토글 — 미리보기 오른쪽 위 (크리스마스 빌더 예시 토글과 같은 모양) */
+.tb-example-toggle {
+  position: absolute; top: 12px; right: 12px; z-index: 3; display: flex; padding: 3px; gap: 2px;
+  border-radius: 999px; background: rgb(255 255 255 / .85); box-shadow: 0 1px 4px rgb(0 0 0 / .12); backdrop-filter: blur(6px);
+}
+.tb-example-toggle button {
+  padding: 5px 12px; border: 0; border-radius: 999px; background: none;
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--gray-600); cursor: pointer; transition: background .15s, color .15s;
+}
+.tb-example-toggle button:hover { color: var(--gray-900); }
+.tb-example-toggle button.on { background: var(--brand); color: #fff; }
+
+
+/* 프리뷰 크기 조절 상자 — 한 번 누르면 고른 제품·오브젝트에 뜨고, 바탕을 누르면 사라진다. 모서리를 끌면 원래 비율로만 커진다 */
+.tb-rs { display: none; position: absolute; width: 10px; height: 10px; margin: -5px; border: 1.5px solid var(--brand); border-radius: 2px; background: #fff; }
+.tb-rs[data-c="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.tb-rs[data-c="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.tb-rs[data-c="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+.tb-rs[data-c="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.tb-scene .product.guide::after { content: ''; position: absolute; inset: 0; border: 1.5px solid var(--brand); pointer-events: none; }
+.tb-scene .product.guide { z-index: 2; }
+.tb-scene .product.guide .tb-rs { display: block; }
+.overlay.locked .product.guide::after { display: none; }
+.overlay.locked .product.guide .tb-rs { display: none; }
+
+/* 크기 조절 상자 오른쪽 위 — 빨간 동그라미(−), 누르면 그 제품·오브젝트를 지운다 */
+.tb-rs-del {
+  display: none; position: absolute; left: 100%; top: 0; z-index: 1; width: 20px; height: 20px; margin: -24px 0 0 4px;
+  border-radius: 50%; background: var(--brand); box-shadow: 0 1px 3px rgb(0 0 0 / .25); cursor: pointer;
+}
+.tb-rs-del::before { content: ''; position: absolute; left: 5px; right: 5px; top: 9px; height: 2px; border-radius: 1px; background: #fff; }
+.tb-rs-del:hover { filter: brightness(1.1); }
+.tb-scene .product.guide .tb-rs-del { display: block; }
+.overlay.locked .product.guide .tb-rs-del { display: none; }
+
+
+/* i 안내 — 이름 옆 작은 동그라미, 올리면 그림·제목·설명 창 */
+.tb-info {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 15px; height: 15px; margin-left: 6px; vertical-align: 1px; border-radius: 50%;
+  background: var(--gray-200); color: var(--gray-600); font: italic 700 10px/1 Georgia, serif; text-transform: none; letter-spacing: 0;
+  cursor: help; transition: background .15s, color .15s;
+}
+.tb-info:hover, .tb-info:focus-visible { background: var(--brand); color: #fff; outline: none; }
+.tb-info-pop {
+  position: fixed; z-index: 1000; width: 280px; padding: 10px 10px 14px; border-radius: 16px;
+  background: #fff; border: 1px solid var(--gray-200); box-shadow: 0 12px 32px rgb(0 0 0 / .14);
+}
+.tb-info-pop[hidden] { display: none; }
+.tb-info-img { aspect-ratio: 16 / 10; border-radius: 10px; background: var(--gray-200); overflow: hidden; }
+.tb-info-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 영상은 자르지 않고 원래 비율로 — 화면 녹화라 넓게 보이게 창도 넓힌다 */
+.tb-info-img.video { aspect-ratio: auto; background: var(--gray-100); }
+.tb-info-img video { width: 100%; display: block; }
+.tb-info-pop:has(.tb-info-img.video) { width: 400px; }
+.tb-info-title { margin: 12px 4px 4px; font-size: 14px; font-weight: 700; color: var(--gray-900); }
+.tb-info-text { margin: 0 4px; font-size: 12px; line-height: 1.5; color: var(--gray-600); }
+
+/* Slot 에셋 — 박스 번호 (블프 PD Slot 의 PLATE n 과 같은 자리) */
+.tb-box-label { margin: 6px 0 -2px; font-size: 11px; font-weight: 500; letter-spacing: .03em; color: var(--gray-400); }
+
+/* Product Slot 배치 넘기기 — Edit panel 이미지 양옆 화살표 + 아래 점 */
+.tb-layout-arrow {
+  position: absolute; top: 50%; z-index: 1; width: 32px; height: 32px; margin-top: -16px; padding: 0;
+  display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%;
+  background: rgb(255 255 255 / .9); box-shadow: 0 1px 4px rgb(0 0 0 / .15); color: var(--gray-700); cursor: pointer; transition: color .15s, background .15s;
+}
+.tb-layout-arrow.prev { left: 10px; }
+.tb-layout-arrow.next { right: 10px; }
+.tb-layout-arrow:hover { background: #fff; color: var(--brand); }
+.tb-layout-dots { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+.tb-layout-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgb(0 0 0 / .2); }
+.tb-layout-dots i.on { background: var(--brand); }
