@@ -42,11 +42,14 @@ const ASSET_GROUPS = [
     // 둥근 단상 (source/1102 정리/<trade-in|trade-up>/basic)
     // 팔레트 이름 — 01-0N = Wide Product (TV), 02-0N = Tall Product (냉장고). noteAfter: 그 박스 다음 줄에 작은 안내 — 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형
     // 제품 자리는 1023 컷에서 눈으로 쟀다 — 1102 썸네일·standard 차이로 다시 재도 맞는다
-    { id: 'b1-01-01', label: 'Wide Product 01', previewCy: 0.48, stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
-    { id: 'b1-01-02', label: 'Wide Product 02', noteAfter: '* Wide Product - A product wider than it is tall (e.g. TV)', previewCy: 0.48, stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
+    // section — 팔레트에서 이 박스부터 새 묶음(제목 + 구분선)으로 나눠 그린다
+    { id: 'b1-01-01', label: 'Wide Product 01', section: 'Main Key Visual _Wide', previewCy: 0.48, stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
+    // oldProduct — 고르면 깔아 두는 구형 제품 (크리스마스 기본 배치 제품처럼 옮기고·키우고·지울 수 있다).
+    //   자리 = 원본 3000² 픽셀 [x, y, w, h] — <컷>-thumbnail-light.png 왼쪽 구형 제품에 맞춰 쟀다 (그림자까지 든 이미지 전체 자리 — 제품 부분이 썸네일 구형 제품과 겹친다)
+    { id: 'b1-01-02', label: 'Wide Product 02', oldProduct: { id: 'old-tv', label: 'Old TV', src: 'product/old-tv.png', srcDark: 'product/old-tv-dark.png', box: [1094, 1396, 222.8, 172.8] }, noteAfter: '* Wide Product - A product wider than it is tall (e.g. TV)', previewCy: 0.48, stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
     // previewCy — 캔버스 미리보기 창 세로 중심. 낮출수록 그림이 내려온다. TV 0.48 · 02-01 0.47 · 02-02 0.49 (previewCy — build-assets.sh 미리보기 세로 중심과 같은 값)
-    { id: 'b1-02-01', label: 'Tall Product 01', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
-    { id: 'b1-02-02', label: 'Tall Product 02', noteAfter: '* Tall Product - A product taller than it is wide (e.g. refrigerator)', previewCy: 0.49, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
+    { id: 'b1-02-01', label: 'Tall Product 01', section: 'Main Key Visual _Tall', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
+    { id: 'b1-02-02', label: 'Tall Product 02', oldProduct: { id: 'old-ref', label: 'Old refrigerator', src: 'product/old-ref.png', srcDark: 'product/old-ref-dark.png', box: [1092, 1284.9, 221, 355.8] }, noteAfter: '* Tall Product - A product taller than it is wide (e.g. refrigerator)', previewCy: 0.49, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
   ] },
   // hidden — 시안 정리로 빌더 팔레트에서만 숨긴다 (에셋·설정은 그대로 — 다시 쓰려면 hidden 만 지운다)
   { key: 'basic-02', label: 'Basic 02', hidden: true, tones: true, bgColors: true, assets: [
@@ -58,17 +61,18 @@ const ASSET_GROUPS = [
     { id: 'b2-02-01', label: '02-01', previewCyBy: { in: 0.47 }, stage: { cx: 0.543, bottom: 0.5, h: 0.136 } },
     { id: 'b2-02-02', label: '02-02', previewCyBy: { in: 0.47 }, stage: { cx: 0.563, bottom: 0.5, h: 0.136 } },
   ] },
-  // source/1102 정리/<trade-in|trade-up>/slot — 가로형(h) · 세로형(v)
+  // source/1102 정리/<trade-in|trade-up>/slot-new — 세로형(v, 1:4) · 가로형(h, 2:2). build-assets.sh 주석 참고
   // 컬러·eco 는 박스로 늘리지 않고 Edit panel Background Color 로 고른다
   { key: 'slot', label: 'Product Slot', bgColors: true, assets: [
     // 팔레트 박스에는 이름을 달지 않는다 (noCaption) — 패널·캔버스 이름은 label
     // boxes — 무대에 그려진 빈 박스 (원본 3000² 픽셀에서 잰 값). 박스 하나에 제품 하나 (블프 PD Slot 과 같은 방식)
-    // layouts — 한 Product Slot 의 두 배치(가로형 · 세로형). 매체 사이즈마다 둘이 섞여 쓰여서 제품은 같이 쓰고,
+    // layouts — 한 Product Slot 의 두 배치(세로형 · 가로형). 매체 사이즈마다 둘이 섞여 쓰여서 제품은 같이 쓰고,
     //   팔레트에는 한 칸만 두고 Edit panel 이미지에서 화살표로 넘겨 본다
-    { id: 'slot-h', label: 'Product Slot', layouts: ['slot-h', 'slot-v'], noCaption: true, boxes: boxesOf([[1024, 1596, 221, 220], [1267, 1596, 221, 220], [1509, 1596, 221, 220], [1752, 1596, 221, 220]]) },
-    // 세로형은 왼쪽 두 칸 · 오른쪽 두 칸 — 번호는 왼쪽 위 → 오른쪽 위 → 왼쪽 아래 → 오른쪽 아래
-    // hidden — 팔레트에는 가로형 칸만 (세로형은 Edit panel 화살표로)
-    { id: 'slot-v', label: 'Product Slot', layouts: ['slot-h', 'slot-v'], hidden: true, noCaption: true, boxes: boxesOf([[1024, 1174, 262, 316], [1720, 1174, 262, 316], [1024, 1520, 262, 316], [1720, 1520, 262, 316]]) },
+    // 세로형은 아이콘 아래 한 줄 넷 — 그림이 가운데보다 위라 미리보기 세로 중심 0.46, 위아래 여백이 남게 줌 2.8 (build-assets.sh 와 같은 값)
+    { id: 'slot-v', label: 'Product Slot', layouts: ['slot-v', 'slot-h'], noCaption: true, previewCy: 0.46, previewZoom: 2.8, boxes: boxesOf([[1024, 1596, 221, 220], [1267, 1596, 221, 220], [1509, 1596, 221, 220], [1752, 1596, 221, 220]]) },
+    // 가로형은 왼쪽 두 칸 · 오른쪽 두 칸 — 번호는 왼쪽 위 → 오른쪽 위 → 왼쪽 아래 → 오른쪽 아래. 미리보기 줌은 세로형과 같은 2.8
+    // hidden — 팔레트에는 세로형 칸만 (가로형은 Edit panel 화살표로)
+    { id: 'slot-h', label: 'Product Slot', layouts: ['slot-v', 'slot-h'], hidden: true, noCaption: true, previewZoom: 2.8, boxes: boxesOf([[901, 1174, 316, 316], [1783, 1174, 316, 316], [901, 1520, 316, 316], [1783, 1520, 316, 316]]) },
   ] },
 ];
 
@@ -88,10 +92,10 @@ const BG_COLORS = [
   { key: 'c7', label: '07', name: 'Eco', suffix: '-eco' },
 ];
 
-/** 그 줄에서 고를 수 있는 칸 — Dark 톤에는 Eco 컷이 없어 07 Eco 를 숨긴다 */
-const bgColorsFor = groupKey => BG_COLORS.filter(c => !(c.key === 'c7' && toneOf(groupKey) === 'dark'));
-/** 그 줄에서 켜 보일 칸 — 고른 칸이 숨겨져 있으면 01 Standard */
-const bgColorOf = groupKey => bgColorsFor(groupKey).some(c => c.key === state.bgColor) ? state.bgColor : 'c1';
+/** 그 줄에서 고를 수 있는 칸 — Dark 톤에는 Standard·Eco 컷이 없어 01 Standard · 07 Eco 를 숨긴다 */
+const bgColorsFor = groupKey => BG_COLORS.filter(c => !((c.key === 'c1' || c.key === 'c7') && toneOf(groupKey) === 'dark'));
+/** 그 줄에서 켜 보일 칸 — 고른 칸이 숨겨져 있으면 그 줄의 첫 칸 (Light 01 Standard · Dark 02) */
+const bgColorOf = groupKey => { const list = bgColorsFor(groupKey); return list.some(c => c.key === state.bgColor) ? state.bgColor : list[0].key; };
 
 /** 버전 — 왼쪽 팔레트 맨 위에서 고른다. */
 const VERSIONS = [
@@ -111,13 +115,21 @@ const toneOf = groupKey => (ASSET_GROUPS.find(g => g.key === groupKey)?.tones &&
 
 /** 버전·톤까지 붙인 기본 에셋 id (Background Color 변형 전) */
 const plainId = (v, groupKey, base) => `${v}-${base}${toneOf(groupKey) === 'dark' ? '-dark' : ''}`;
-/** No Old Product 컷(-np)이 구워진 에셋인가 — 01-02 · 02-02 (미리보기 오른쪽 위 토글) */
-const hasNoOld = (v, groupKey, base) => manifest.has(plainId(v, groupKey, base) + '-np');
-/** 고른 Background Color 칸의 변형(-eco 등)이 구워져 있으면 그 id, 아니면 기본 id. No Old Product 를 켜면 -np 컷에서 고른다 */
+/** 그 변형 묶음(-np · -ni)이 하나라도 구워져 있나 */
+const hasCut = id => manifest.has(id) || BG_COLORS.some(c => c.suffix && manifest.has(id + c.suffix));
+/** 아이콘 없는 컷(-ni)이 구워진 에셋인가 — Basic 01 네 컷 (미리보기 오른쪽 위 Standard 토글) */
+const hasNoIcon = (v, groupKey, base) => hasCut(plainId(v, groupKey, base) + '-ni');
+/**
+ * 고른 Background Color 칸의 변형(-eco 등)이 구워져 있으면 그 id, 아니면 기본 id.
+ * 01-02 · 02-02 는 언제나 구형 제품을 뺀 컷(-np) — 구형 TV·냉장고는 나중에 따로 합성해 고정한다.
+ * Standard 를 켜면 아이콘(과 구형 제품)이 없는 컷(-ni)에서 고른다.
+ */
 const assetId = (v, groupKey, base) => {
   let id = plainId(v, groupKey, base);
-  if (state.noOld && manifest.has(id + '-np')) id += '-np';
-  const sfx = BG_COLORS.find(c => c.key === state.bgColor)?.suffix;
+  // Dark 는 Standard 컷이 없다 — 고른 칸 대신 그 줄에서 켜 보일 칸(bgColorOf)의 변형으로
+  const sfx = BG_COLORS.find(c => c.key === bgColorOf(groupKey))?.suffix;
+  if (state.noIcon && hasCut(id + '-ni')) id += '-ni';
+  else if (hasCut(id + '-np')) id += '-np';
   return sfx && manifest.has(id + sfx) ? id + sfx : id;
 };
 
@@ -135,10 +147,12 @@ const groupsFor = v => ASSET_GROUPS.map(g => ({
 }));
 
 const ASSET_DIR = 'assets/trade-in-up';
-const thumbUrl = a => `${ASSET_DIR}/${a.thumbId || a.id}-thumb.jpg`;
-const previewUrl = a => `${ASSET_DIR}/${a.id}-preview.jpg`;
-const frameUrl = a => `${ASSET_DIR}/${a.id}-frame.jpg`;
-const stageUrl = a => `${ASSET_DIR}/${a.id}-stage.jpg`;
+/** 파일 이름 — 아이콘 없는 컷은 Trade In · Up 이 같은 그림이라 한 벌(ni-b1-…)만 구워 둔다: in-b1-01-02-dark-ni-color-01 → ni-b1-01-02-dark-color-01 */
+const fileOf = id => id.replace(/^(?:in|up)-(.*?)-ni(?=-|$)/, 'ni-$1');
+const thumbUrl = a => `${ASSET_DIR}/${fileOf(a.thumbId || a.id)}-thumb.jpg`;
+const previewUrl = a => `${ASSET_DIR}/${fileOf(a.id)}-preview.jpg`;
+const frameUrl = a => `${ASSET_DIR}/${fileOf(a.id)}-frame.jpg`;
+const stageUrl = a => `${ASSET_DIR}/${fileOf(a.id)}-stage.jpg`;
 
 /** 캔버스 미리보기 창 — 980:464 박스에 원본 높이의 1/3.3 (build-assets.sh 의 preview 와 같은 값). */
 const PREVIEW_ZOOM = 3.3;
@@ -170,7 +184,8 @@ const versionLabel = v => VERSIONS.find(x => x.key === v)?.label ?? '';
 const findAsset = id => {
   if (!id) return null;
   for (const g of groupsFor(id.split('-')[0])) {
-    const a = g.assets.find(x => x.id === id);
+    // 팔레트 칸 id(썸네일 id)로도 찾는다 — Dark 칸은 Standard 컷이 없어 칸 id 와 에셋 id 가 다르다
+    const a = g.assets.find(x => x.id === id) || g.assets.find(x => x.thumbId === id);
     if (a) return { asset: a, group: g };
   }
   return null;
@@ -228,11 +243,13 @@ const state = {
   version: 'in',
   tone: {}, // 줄 key → 'light' | 'dark' (없으면 light)
   bgColor: 'c1', // 고른 Background Color 칸 key — 01 Standard 가 기본
-  noOld: false, // No Old Product — 구형 제품을 뺀 컷 (-np) 으로 본다. 에셋을 새로 고르면 꺼진다
+  noIcon: false, // Standard — 아이콘 없는 컷 (-ni) 으로 본다. 에셋을 새로 고르면 꺼진다
   selectedId: null,
   step: 0, // 상단 스텝 (0 부터) — 에셋을 고르면 1, 미리보기 아래 OK 를 누르면 2
   channel: null, // 3 단계에서 고른 매체 key
   copy: newCopyState(), // 매체를 고르면 Edit panel 에 뜨는 Copy 값 (lib/channelCopy.js) — 매체를 바꿔도 이어진다
+  // 글자 모드는 판 종류마다 따로 — Main Key Visual 은 Light(흰 글자), Product Slot 은 밝은 배경이라 Dark(검은 글자)가 기본. copy.textMode 는 지금 판 종류 값을 옮겨 둔 것
+  textModes: { kv: 'light', pslot: 'dark' },
   open: new Set(['product']), // Product & Shadow 는 늘 펼쳐 둔다 (EDIT_SECTIONS fixed)
   fxOpen: false, // 고른 제품 줄 아래 Shadow 드롭다운을 펼쳤나
   guide: false, // 프리뷰에서 고른 제품에 크기 조절 상자를 띄웠나 (배경을 누르면 끈다)
@@ -273,8 +290,8 @@ function setStatus(msg, isError = false, where = 'product') {
  * 제품이 놓일 사각형 (배경 픽셀). 발끝을 바닥선에 맞추고 가로 중심에 세운다.
  * 크기를 바꾸면 발끝이 그대로인 채 커지고 작아진다 — 단상 위에 선 채로.
  */
-/** 박스 안 여백 — 0: 크롭(정사각 프레임 + 줌)에서 정한 여백이 그대로 박스 안 크기가 된다 (블프 PD Slot 과 같다) */
-const BOX_PAD = 0;
+/** 박스 안 최소 여백 — 박스 짧은 변의 10% 를 사방에 비운다 (세일즈 배너 빌더 Product Slot 의 padding 10% 와 같다). 크롭에서 남긴 여백은 그 안쪽에 더해진다 */
+const BOX_PAD = 0.1;
 
 function productRect(slot) {
   const hit = findAsset(state.selectedId);
@@ -301,12 +318,13 @@ function productRect(slot) {
   return { x: cx - w / 2, y: bottom - h, w, h };
 }
 
-/** 미리보기 창 (배경 픽셀) — 원본 높이의 1/PREVIEW_ZOOM. 세로 중심은 에셋의 previewCy (기본 가운데). */
+/** 미리보기 창 (배경 픽셀) — 원본 높이의 1/PREVIEW_ZOOM (에셋에 previewZoom 이 있으면 그 값). 세로 중심은 에셋의 previewCy (기본 가운데). */
 function previewWindow() {
   const { w, h } = state.bg;
-  const ch = h / PREVIEW_ZOOM;
+  const asset = findAsset(state.selectedId)?.asset;
+  const ch = h / (asset?.previewZoom ?? PREVIEW_ZOOM);
   const cw = Math.min(w, ch * PREVIEW_RATIO);
-  const cy = findAsset(state.selectedId)?.asset.previewCy ?? 0.5;
+  const cy = asset?.previewCy ?? 0.5;
   return { x: (w - cw) / 2, y: cy * h - ch / 2, w: cw, h: ch };
 }
 
@@ -377,24 +395,36 @@ function renderPalette() {
   // 세로형을 보고 있어도 팔레트의 Product Slot 칸은 골라진 채로
   const sel = findAsset(state.selectedId);
   const selBase = sel?.asset.base, selGroup = sel?.group.key;
-  $('#palette').innerHTML = versionSeg + groupsFor(state.version).filter(g => !g.hidden).map(g => `
+  const cellOf = (g, a, t) => {
+    // 톤 줄은 Light · Dark 칸을 따로 그린다 — 지금 톤 칸은 고른 id 그대로, 다른 톤 칸은 그 톤의 기본 컷
+    const cur = !t || g.tone === t.key;
+    const id = cur ? a.id : `${a.version}-${a.base}${t.key === 'dark' ? '-dark' : ''}`;
+    const thumb = cur ? a : { id, thumbId: id };
+    // Dark 는 Standard 컷이 없어 manifest 에 -dark 가 없다 — 컬러 변형이 하나라도 있으면 타일이 있다
+    const art = cur ? a.art : manifest.has(id) || BG_COLORS.some(c => c.suffix && manifest.has(id + c.suffix));
+    const on = cur && (state.selectedId === a.id || (a.layouts && a.layouts.includes(selBase) && selGroup === g.key));
+    return `
+          <button type="button" class="tb-cell${on ? ' selected' : ''}" data-id="${id}"${t ? ` data-group="${g.key}" data-tone="${t.key}"` : ''}>
+            <span class="tb-tile${art ? ' has-art' : ''}">${art ? `<img src="${thumbUrl(thumb)}" alt="${esc(a.label)}" loading="lazy" draggable="false" />` : ''}</span>
+            ${a.noCaption ? '' : `<span class="tb-caption">${t ? `<span class="tb-tone-dot tb-tone-${t.key}">${t.icon}</span>` : ''}${esc(a.label)}</span>`}
+          </button>`;
+  };
+  // 묶음 — 박스의 section 에서 새 묶음을 연다 (Main Key Visual _Wide · _Tall). 없으면 줄 하나가 한 묶음
+  //   톤 줄은 Light 칸 줄 · Dark 칸 줄을 차례로, 안내(noteAfter)는 칸 아래에
+  const sections = [];
+  for (const g of groupsFor(state.version).filter(g => !g.hidden)) {
+    for (const a of g.assets.filter(a => !a.hidden)) {
+      if (a.section || sections.at(-1)?.group !== g) sections.push({ group: g, label: a.section ?? g.label, list: [], notes: [] });
+      sections.at(-1).list.push(a);
+      if (a.noteAfter) sections.at(-1).notes.push(a.noteAfter);
+    }
+  }
+  $('#palette').innerHTML = versionSeg + sections.map(({ group: g, label, list, notes }) => `
     <section class="tb-group">
-      <div class="tb-group-head">
-        <p class="tb-group-label">${esc(g.label)}</p>
-        ${g.tones ? `<div class="tb-tones" role="radiogroup" aria-label="${esc(g.label)} tone">
-          ${TONES.map(t => `
-            <button type="button" role="radio" class="tb-tone tb-tone-${t.key}${g.tone === t.key ? ' on' : ''}" aria-checked="${g.tone === t.key}" data-group="${g.key}" data-tone="${t.key}">
-              <span class="tb-tone-dot">${t.icon}</span>${t.label}
-            </button>`).join('')}
-        </div>` : ''}
-      </div>
-      <div class="tb-grid">
-        ${g.assets.filter(a => !a.hidden).map(a => `
-          <button type="button" class="tb-cell${state.selectedId === a.id || (a.layouts && a.layouts.includes(selBase) && selGroup === g.key) ? ' selected' : ''}" data-id="${a.id}">
-            <span class="tb-tile${a.art ? ' has-art' : ''}">${a.art ? `<img src="${thumbUrl(a)}" alt="${esc(a.label)}" loading="lazy" draggable="false" />` : ''}</span>
-            ${a.noCaption ? '' : `<span class="tb-caption">${esc(a.label)}</span>`}
-          </button>${a.noteAfter ? `<p class="tb-grid-note">${esc(a.noteAfter)}</p>` : ''}`).join('')}
-      </div>
+      <p class="tb-group-label">${esc(label)}</p>
+      <div class="tb-grid">${g.tones ? TONES.map(t => list.map(a => cellOf(g, a, t)).join('')).join('') : list.map(a => cellOf(g, a)).join('')}
+      </div>${notes.map(n => `
+      <p class="tb-grid-note">${esc(n)}</p>`).join('')}
     </section>`).join('');
 }
 
@@ -427,9 +457,9 @@ function renderCanvas() {
                  <div id="brushCursor" hidden></div>
                </div>
              </div>
-             ${hasNoOld(asset.version, group.key, asset.base) ? `
-               <div class="tb-example-toggle" role="group" aria-label="Old product">
-                 <button type="button" data-noold${state.noOld ? ' class="on"' : ''} aria-pressed="${state.noOld}">No Old Product</button>
+             ${hasNoIcon(asset.version, group.key, asset.base) ? `
+               <div class="tb-example-toggle" role="group" aria-label="Icon">
+                 <button type="button" data-noicon${state.noIcon ? ' class="on"' : ''} aria-pressed="${state.noIcon}">Standard</button>
                </div>` : ''}`
           : `${IMAGE_ICON}<span>Artwork coming soon</span>`}
       </div>
@@ -473,8 +503,37 @@ function channelPicker() {
  * 바탕은 제품까지 합성한 3000² 완성 컷(#comp). 컬러·톤이 바뀌어도 빈 영역은 그 컷의 가장자리로, 그라데이션은 그 컷의 벽 색으로 맞춘다.
  * 카피는 매체를 고르면 Edit panel 에 뜨는 Copy 패널(state.copy) 값 — 비어 있으면 Figma 자리 표시 문구.
  */
-// 에셋 → 보드 (true = Tall)
-const SLOT_ASSETS = new Map([['b1-01-01', false], ['b1-01-02', false], ['b1-02-01', true], ['b1-02-02', true]]);
+// 에셋 → 보드 ('tall' = Main Key Visual 02, '' = 01). Product Slot 줄(group 'slot')은 'pslot' — 세로형·가로형 어느 쪽이든 Product Slot 01 · 02 보드
+const SLOT_ASSETS = new Map([['b1-01-01', ''], ['b1-01-02', ''], ['b1-02-01', 'tall'], ['b1-02-02', 'tall']]);
+const boardOf = hit => hit.group.key === 'slot' ? 'pslot' : SLOT_ASSETS.get(hit.asset.base);
+/** 지금 판 종류의 글자 모드를 copy 에 옮긴다 — Copy 패널·매체 미리보기를 그리기 전에 */
+const textKind = () => findAsset(state.selectedId)?.group.key === 'slot' ? 'pslot' : 'kv';
+const syncTextMode = () => { state.copy.textMode = state.textModes[textKind()]; };
+// Product Slot 판 아이콘 — 버전 × (Background Color 07 Eco 면 나무, 아니면 클리어). 처음 읽히면 다시 그린다
+const slotIcons = new Map();
+function slotIcon(version) {
+  const src = `assets/trade-in-up/slot-icon/${version}-${bgColorOf('slot') === 'c7' ? 'wood' : 'clear'}.png`;
+  if (!slotIcons.has(src)) {
+    const img = new Image();
+    img.onload = () => renderSlots();
+    img.src = src;
+    slotIcons.set(src, img);
+  }
+  return slotIcons.get(src);
+}
+// Product Slot 판 배경 이미지 — Background Color 02~06 에 배경 컷이 구워져 있으면 (build-assets.sh slot-bg). 없으면 null = 바탕색
+function slotBg(version) {
+  const sfx = BG_COLORS.find(c => c.key === bgColorOf('slot'))?.suffix;
+  if (!sfx?.startsWith('-color-') || !manifest.has(`${version}-slot-v${sfx}`)) return null;
+  const src = `assets/trade-in-up/slot-bg/${sfx.slice(1)}.jpg`;
+  if (!slotIcons.has(src)) {
+    const img = new Image();
+    img.onload = () => renderSlots();
+    img.src = src;
+    slotIcons.set(src, img);
+  }
+  return slotIcons.get(src);
+}
 // LG.com 은 히어로 두 장(1920×720 → 720×960)을 맨 앞에
 const HERO_PC = 'lgcom-ST0001-pc-1920x720', HERO_MO = 'lgcom-ST0001-mo-720x960';
 const heroFirst = list => [...list.filter(s => s.key === HERO_PC), ...list.filter(s => s.key === HERO_MO), ...list.filter(s => s.key !== HERO_PC && s.key !== HERO_MO)];
@@ -509,19 +568,20 @@ function renderSlots() {
     slotsQueued = false;
     const box = $('#slots');
     if (!box) return;
+    syncTextMode();
     const hit = findAsset(state.selectedId);
     const on = state.step >= 2 && state.channel && hit;
     box.hidden = !on;
     if (!on) return;
-    if (!SLOT_ASSETS.has(hit.asset.base)) {
+    const board = boardOf(hit);
+    if (board == null) {
       box.innerHTML = '<p class="tb-slots-empty">Sizes for this visual are coming soon.</p>';
       box.dataset.keys = '';
       return;
     }
-    const tall = SLOT_ASSETS.get(hit.asset.base);
     const slots = state.channel === 'all'
-      ? Object.keys(CHANNEL_KEYS).flatMap(k => heroFirst(slotsForChannel(k, tall)))
-      : heroFirst(slotsForChannel(state.channel, tall));
+      ? Object.keys(CHANNEL_KEYS).flatMap(k => heroFirst(slotsForChannel(k, board)))
+      : heroFirst(slotsForChannel(state.channel, board));
     if (!slots.length) {
       box.innerHTML = '<p class="tb-slots-empty">Sizes for this channel are coming soon.</p>';
       box.dataset.keys = '';
@@ -545,15 +605,18 @@ function renderSlots() {
         </figure>${sl.key === HERO_MO ? '<div class="tb-slots-break"></div>' : ''}`;
       }).join('');
     }
-    const comp = state.bg?.assetId === state.selectedId ? $('#comp') : null;
+    const pslot = board === 'pslot';
+    const comp = !pslot && state.bg?.assetId === state.selectedId ? $('#comp') : null;
     const fadeColor = comp ? fadeColorFor(comp) : null;
+    // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
+    const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version) } : {};
     const canvases = box.querySelectorAll('canvas[data-slot]');
     slots.forEach((sl, i) => {
       const c = canvases[i];
       if (!c) return;
       const ctx = c.getContext('2d');
       ctx.setTransform(c.width / sl.w, 0, 0, c.height / sl.h, 0, 0);
-      drawSlot(ctx, sl, comp, state.copy, { fadeColor, artVersion });
+      drawSlot(ctx, sl, comp, state.copy, { fadeColor, artVersion, ...pslotOpts });
     });
   });
 }
@@ -580,6 +643,7 @@ function renderEdit() {
   // 매체를 골라 3 단계에 있으면 Edit panel 은 그 매체의 Copy 패널 (크리스마스 빌더와 같다)
   const channel = state.step >= 2 && CHANNEL_ROWS.flat().find(c => c.key === state.channel);
   if (channel) {
+    syncTextMode();
     $('#editBody').innerHTML = renderCopyPanel(state.copy, channel);
     return;
   }
@@ -593,14 +657,14 @@ function renderEdit() {
         <div class="tb-bgcolor">
           <p class="tb-acc-item-label">Background Color</p>
           <div class="tb-bgcolor-row" role="radiogroup" aria-label="Background color">
-            ${bgColorsFor(group.key).map(c => {
+            ${bgColorsFor(group.key).map((c, n) => {
               // 칸 그림 — 이 에셋(버전·톤)의 그 변형에서 잘라 둔 컬러 조각
               const sid = (c.key === 'c1' || c.suffix) ? plainId(asset.version, group.key, asset.base) + (c.suffix || '') : null;
               const sw = sid && manifest.get(sid)?.swatch ? `${ASSET_DIR}/${sid}-swatch.jpg` : null;
               return `
               <button type="button" role="radio" class="tb-bgcolor-item${bgColorOf(group.key) === c.key ? ' on' : ''}" aria-checked="${bgColorOf(group.key) === c.key}" data-bgcolor="${c.key}">
                 <span class="tb-bgcolor-dot${sw ? '' : ' empty'}"${sw ? ` style="background-image:url('${sw}')"` : ''}></span>
-                <span class="tb-bgcolor-label">${c.label}${c.name ? `<br>${esc(c.name)}` : ''}</span>
+                <span class="tb-bgcolor-label">${/* 번호는 보이는 칸 순서대로 — Dark 는 Standard 가 없어 02 부터가 01 */ String(n + 1).padStart(2, '0')}${c.name ? `<br>${esc(c.name)}` : ''}</span>
               </button>`;
             }).join('')}
           </div>
@@ -1055,6 +1119,8 @@ async function runImport(i, flow, keep) {
     if (!slot) return; // 그새 슬롯을 지웠다
     // 합성 엔진은 이미지 요소로 그리므로 미리 디코드해 둔다
     const img = await loadImage(out.src);
+    // 기본 배치 칸에 제품을 새로 올리면 더는 기본 배치가 아니다 (다른 에셋으로 가도 남는다)
+    slot.preset = out.preset ?? null;
     slot.product = { ...out, img, meta: out.meta ?? keep?.meta, images: out.images ?? keep?.images };
     // 제품 사진이 바뀌었으니 화면 영역의 색도 새 사진에서 다시 읽는다
     if (slot.screen.quadN) sampleQuad(slot);
@@ -1490,32 +1556,25 @@ $('#palette').addEventListener('click', e => {
     void swapTo(() => { state.version = v; }, cur && (() => assetId(v, cur.group.key, cur.asset.base)));
     return;
   }
-  const tb = e.target.closest('[data-tone]');
-  if (tb) {
-    const { group, tone } = tb.dataset;
-    if (toneOf(group) === tone) return;
-    // 고른 박스가 이 줄에 있으면 같은 자리의 다른 톤으로 옮겨 간다 — 제품·설정은 그대로
-    const cur = findAsset(state.selectedId);
-    markOn(tb, 'aria-checked');
-    // Dark 에는 07 Eco 가 없다 — Eco 를 고른 채 Dark 로 가면 01 Standard 로 돌린다
-    void swapTo(() => { state.tone[group] = tone; if (tone === 'dark' && state.bgColor === 'c7') state.bgColor = 'c1'; }, cur?.group.key === group && (() => assetId(cur.asset.version, group, cur.asset.base)));
-    return;
-  }
   const cell = e.target.closest('.tb-cell');
   if (!cell) return;
   // 같은 타일을 다시 누르면 선택 해제 (BF 와 동일)
   if (cell.classList.contains('selected')) { selectAsset(null); return; }
-  // 다른 에셋을 고르면 Background Color 는 언제나 01 Standard 에서 시작한다
-  const hit = findAsset(cell.dataset.id);
+  // Light · Dark 칸 — 그 칸의 톤으로 바꾼 뒤 고른다 (findAsset 이 지금 톤의 id 로 찾는다)
+  if (cell.dataset.tone) state.tone[cell.dataset.group] = cell.dataset.tone;
+  // 다른 에셋을 고르면 Background Color 는 언제나 첫 칸에서 시작한다 (Light 01 Standard · Dark 02)
   state.bgColor = 'c1';
-  state.noOld = false;
+  state.noIcon = false;
   state.step = 1;
-  selectAsset(hit ? plainId(hit.asset.version, hit.group.key, hit.asset.base) : cell.dataset.id);
+  const hit = findAsset(cell.dataset.id);
+  selectAsset(hit ? assetId(hit.asset.version, hit.group.key, hit.asset.base) : cell.dataset.id);
+  placeOldProduct(hit?.asset, hit?.group.key);
 });
 
 const editBody = $('#editBody');
 // Copy 패널 입력 — 글자는 사이즈만 다시, 체크·로고·모드처럼 패널 모양이 바뀌는 건 패널까지 (크리스마스 빌더와 같다)
-bindCopyPanel(editBody, state.copy, () => { renderEdit(); renderSlots(); }, () => renderSlots());
+// Text mode 버튼은 copy.textMode 를 바꾸고 첫 콜백을 부른다 — 그 값을 지금 판 종류 몫으로 남긴다
+bindCopyPanel(editBody, state.copy, () => { state.textModes[textKind()] = state.copy.textMode; renderEdit(); renderSlots(); }, () => renderSlots());
 
 editBody.addEventListener('click', e => {
   // 기능 박스 펼치기/접기 — 다시 그리지 않고 클래스만 바꿔야 높이 전환이 보인다
@@ -1694,12 +1753,12 @@ const canvasEl = $('#canvas');
 canvasEl.addEventListener('click', e => {
   if (e.target.closest('[data-act="open-channels"]')) goStep(2);
 });
-// No Old Product — 구형 제품을 뺀 컷으로 갈아 끼운다 (같은 톤·Background Color). 한 번 더 누르면 원래 컷. 제품·설정은 그대로
+// Standard — 아이콘 없는 컷으로 갈아 끼운다 (같은 톤·Background Color). 한 번 더 누르면 원래 컷. 제품·설정은 그대로
 canvasEl.addEventListener('click', e => {
-  if (!e.target.closest('[data-noold]')) return;
+  if (!e.target.closest('[data-noicon]')) return;
   const cur = findAsset(state.selectedId);
   if (!cur) return;
-  void swapTo(() => { state.noOld = !state.noOld; }, () => assetId(cur.asset.version, cur.group.key, cur.asset.base));
+  void swapTo(() => { state.noIcon = !state.noIcon; }, () => assetId(cur.asset.version, cur.group.key, cur.asset.base));
 });
 // 매체 알약 — 하나만 고른다, 한 번 더 누르면 해제
 canvasEl.addEventListener('click', e => {
@@ -1776,11 +1835,50 @@ canvasEl.addEventListener('pointerdown', e => {
   update();
 });
 
+/**
+ * 구형 제품 기본 배치 — 팔레트에서 Wide · Tall Product 02 를 고르면 그 에셋의 oldProduct 를 제품 칸 하나로 깐다.
+ * 업로드한 제품과 똑같이 고르고·옮기고·키우고·지운다. 다른 에셋으로 가면 깔아 둔 칸(preset)은 걷는다
+ */
+function placeOldProduct(asset, groupKey) {
+  if (!asset || asset.boxes) return;
+  const list = state.kvSlots, op = asset.oldProduct;
+  for (let i = list.length - 1; i >= 0; i--) if (list[i].preset && list[i].preset !== op?.id) list.splice(i, 1);
+  if (!list.length) list.push(newSlot(0));
+  if (state.active >= list.length) state.active = 0;
+  // Light · Dark 이미지가 따로 있다 (srcDark) — 같은 칸에서 톤만 바꾸면 자리는 두고 그림만 갈아 끼운다
+  const dark = toneOf(groupKey) === 'dark';
+  const load = i => runImport(i, async () => {
+    const res = await fetch(`${ASSET_DIR}/${dark && op.srcDark ? op.srcDark : op.src}`);
+    if (!res.ok) throw new Error(`Product load failed (${res.status})`);
+    const original = await blobToDataUrl(await res.blob());
+    const img = await loadImage(original);
+    return { original, brushed: original, cropRect: null, src: original, w: img.naturalWidth, h: img.naturalHeight, meta: { name: op.label, model: 'Default' }, preset: op.id, presetDark: dark };
+  });
+  const had = op && list.findIndex(s => s.preset === op.id);
+  if (op && had >= 0 && !!list[had].product?.presetDark !== dark) load(had);
+  if (op && had < 0) {
+    const [x, y, w, h] = op.box.map(v => v / 3000);
+    const st = asset.stage;
+    const slot = newSlot(0);
+    slot.preset = op.id;
+    // 그림자는 이미지에 이미 들어 있다 — 빌더 그림자(접지·바닥)는 꺼 두고 필요하면 패널에서 켠다
+    slot.fx.contact.on = false;
+    slot.fx.floor.on = false;
+    Object.assign(slot.place, { scale: h / st.h, dx: x + w / 2 - st.cx, dy: y + h - st.bottom });
+    // 1 번 칸으로 — 비어 있는 1 번 칸은 그 자리를 쓰고, 제품이 있으면 앞에 끼운다
+    if (!list[0].product) list[0] = slot; else list.unshift(slot);
+    state.active = 0;
+    load(0);
+  }
+  buildProductList();
+  update();
+}
+
 /** 프리뷰에서 지우기 — 칸이 여럿이면 칸째로, 하나뿐이면 사진만 비운다 (링크·업로드 자리는 남긴다) */
 function removeSlot(i) {
   const slot = state.slots[i];
   if (!slot) return;
-  if (state.slots.length === 1) slot.product = null;
+  if (state.slots.length === 1) { slot.product = null; slot.preset = null; }
   else state.slots.splice(i, 1);
   state.guide = false;
   if (state.active >= state.slots.length || state.active > i) state.active = Math.max(0, state.active - 1);
@@ -1968,6 +2066,11 @@ fetch(`${ASSET_DIR}/manifest.json`, { cache: 'no-cache' })
   .then(r => (r.ok ? r.json() : []))
   .then(list => {
     manifest = new Map(list.map(m => [m.id, m]));
+    // 아이콘 없는 컷(ni-b1-<컷>[-dark]…)은 두 버전 id(<버전>-b1-<컷>[-dark]-ni…)로도 찾게 한다 — fileOf 의 반대
+    for (const m of list) {
+      const hit = m.id.match(/^ni-(b1-\d\d-\d\d(?:-dark)?)(.*)$/);
+      if (hit) for (const v of VERSIONS) manifest.set(`${v.key}-${hit[1]}-ni${hit[2]}`, m);
+    }
     renderPalette();
   })
   .catch(err => console.error('[manifest]', err));

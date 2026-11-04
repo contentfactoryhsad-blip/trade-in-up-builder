@@ -1,6 +1,7 @@
 /**
  * 매체별 배너 사이즈 — 크리스마스 빌더(11 Christmas/public/lib/channelSlots.js)를 옮겼다.
  * 데이터는 보드마다 하나 — Wide Product = lib/channelSlotData.js (Main Key Visual 01), Tall Product = lib/channelSlotDataTall.js (Main Key Visual 02).
+ * Product Slot = lib/channelSlotDataSlot.js (Product Slot 01 · 02 — 컷을 통째로 얹지 않고 아이콘·칸·제품을 따로 그린다, drawProductSlot).
  *
  *   art   : [x, y, 한 변] — 빌더의 3000² 완성 컷을 그대로 이 자리에 놓는다.
  *           컷이 판을 다 못 덮는 곳은 컷의 가장자리 줄을 늘려 채운다 (Figma 의 KV edge extend 와 같은 방식 — 배경 컬러가 바뀌어도 맞는다)
@@ -14,6 +15,7 @@
  */
 import { SLOT_DATA } from './channelSlotData.js';
 import { SLOT_DATA_TALL } from './channelSlotDataTall.js';
+import { SLOT_DATA_PSLOT } from './channelSlotDataSlot.js';
 import { ICON_LIST, iconSvg, splitLabel } from './icons.js';
 export { SLOT_DATA };
 
@@ -93,9 +95,9 @@ function drawIconRow(ctx, box, ic) {
 
 // 다크 톤 — 라이트 KV 의 베이지(#9c9185 등)로 칠한 바탕·그라데이션을 다크 KV 의 같은 자리 색으로 바꾼다
 // (#182a24 — 라이트 KV 에서 그 색인 자리들을 다크 KV 에서 읽은 평균, 자리마다 차이 ±3 안쪽). 검정은 그대로
-/** 매체 key → 사이즈 목록. 'all' 은 모든 매체를 이어 붙인다. 아직 없는 매체는 빈 배열. tall = Tall Product 보드 */
-export function slotsForChannel(key, tall = false) {
-  const data = tall ? SLOT_DATA_TALL : SLOT_DATA;
+/** 매체 key → 사이즈 목록. 'all' 은 모든 매체를 이어 붙인다. 아직 없는 매체는 빈 배열. board = 'tall' (Tall Product 보드) · 'pslot' (Product Slot 01 · 02 보드) · 그 밖 Wide */
+export function slotsForChannel(key, board) {
+  const data = board === 'pslot' ? SLOT_DATA_PSLOT : board === 'tall' ? SLOT_DATA_TALL : SLOT_DATA;
   return key === 'all' ? Object.values(data).flat() : data[key] || [];
 }
 
@@ -135,6 +137,45 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
   strip(IN, last, 1, 1, 0, B, L, H - B);
   strip(last, last, 1, 1, R, B, W - R, H - B);
   ctx.drawImage(art, ax, ay, as, as);
+}
+
+/**
+ * Product Slot 판 — 배경 컬러를 깔고, 칸(흰 둥근 사각형, 불투명도 SLOT_ALPHA)과 칸 안 제품, 그 위에 아이콘을 Figma 자리대로 그린다 (칸은 아이콘 아래 레이어).
+ *   slot.icon  : 아이콘 컴포넌트 인스턴스 [x, y, 한 변] — 컴포넌트 2000² 안에서 아이콘 그림(opts.icon)이 놓이는 자리가 PSLOT_ICON
+ *   slot.boxes : [x, y, 한 변, 모서리] — 제품은 칸 짧은 변의 BOX_PAD 만큼 사방을 비우고 비율대로 가운데 (빌더 캔버스와 같다)
+ *   opts.products[i] : i 번 칸 제품 { img, w, h } (없으면 빈 칸), opts.bg : 배경 컬러, opts.bgImg : 배경 이미지 (Background Color 02~06 — 판에 cover 로 깐다)
+ */
+export const PSLOT_ICON = [330.2, 294.4, 1339.6, 1491.2]; // 컴포넌트 이미지 채우기(source/1102 정리/<in|up> icon-fixed.png · -eco.png, 2015×2243)의 Crop imageTransform 에서 구한 자리 = assets/trade-in-up/slot-icon/*.png
+const BOX_PAD = 0.1;
+const SLOT_ALPHA = 0.7; // 칸 불투명도 — PSD slot 레이어(179/255) · Figma slot 사각형과 같다. 배경 컬러가 비쳐 보인다
+function drawProductSlot(ctx, slot, opts) {
+  const { w: W, h: H } = slot;
+  ctx.fillStyle = opts.bg || '#F0ECE4';
+  ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingQuality = 'high';
+  const bi = opts.bgImg;
+  if (bi?.complete && bi.naturalWidth) {
+    const k = Math.max(W / bi.naturalWidth, H / bi.naturalHeight);
+    const w = bi.naturalWidth * k, h = bi.naturalHeight * k;
+    ctx.drawImage(bi, (W - w) / 2, (H - h) / 2, w, h);
+  }
+  slot.boxes.forEach(([x, y, s, r], i) => {
+    ctx.fillStyle = `rgba(255,255,255,${SLOT_ALPHA})`;
+    ctx.beginPath();
+    ctx.roundRect(x, y, s, s, r);
+    ctx.fill();
+    const p = opts.products?.[i];
+    if (!p?.img) return;
+    const inner = s * (1 - BOX_PAD * 2);
+    const k = Math.min(inner / p.w, inner / p.h);
+    const w = p.w * k, h = p.h * k;
+    ctx.drawImage(p.img, x + (s - w) / 2, y + (s - h) / 2, w, h);
+  });
+  const icon = opts.icon;
+  if (icon?.complete && icon.naturalWidth) {
+    const [ix, iy, is] = slot.icon, k = is / 2000, [rx, ry, rw, rh] = PSLOT_ICON;
+    ctx.drawImage(icon, ix + rx * k, iy + ry * k, rw * k, rh * k);
+  }
 }
 
 const HEAD = '"LGEI Headline", sans-serif';
@@ -191,6 +232,7 @@ export const logosReady = () => Promise.all(Object.keys(LOGOS).map(id => {
 /**
  * opts.imageOnly: LG.com 다운로드용 — 카피·CTA 없이 (이미지 업로드 가이드: 아이콘·디스클레이머만 남긴다)
  * opts.fadeColor: 그라데이션 색 (#rrggbb) — 없으면 Figma 색 그대로, opts.artVersion: 컷이 바뀌면 올린다 (가장자리 사본을 다시 만든다)
+ * opts.icon · products · bg: Product Slot 판 (drawProductSlot)
  */
 export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (slot.noCopy) slot = { ...slot, logo: null, rows: [], cta: null, disc: null };
@@ -203,7 +245,8 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, W, H);
-  if (art && slot.art) drawArtFilled(ctx, art, slot.art, W, H, opts.artVersion);
+  if (slot.boxes) drawProductSlot(ctx, slot, opts);
+  else if (art && slot.art) drawArtFilled(ctx, art, slot.art, W, H, opts.artVersion);
   // Figma 기본 그라데이션 색 — 기본 컷(Standard Light)일 때 opts.fadeColor 도 이 색이 된다
   const hex = opts.fadeColor || '#9c9185';
   const alpha = a => `${hex}${Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0')}`;

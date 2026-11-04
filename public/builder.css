@@ -92,10 +92,12 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-drag:active, .tb-drag.dragging { background: rgb(253 49 46 / .6); }
 
 /* 팔레트 — 대주제당 2열 */
-.tb-palette { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
-.tb-group { display: flex; flex-direction: column; gap: 8px; }
+.tb-palette { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+/* 묶음 사이 구분선 — 안내 → 선 14px, 선 → 다음 제목 14px. 스크롤 없이 한 화면에 들어오게 좁혔다 */
+.tb-group { display: flex; flex-direction: column; gap: 10px; }
+.tb-group + .tb-group { padding-top: 14px; border-top: 1px solid var(--gray-200); }
 .tb-group-label { margin: 0; padding: 0 4px; font-size: 12px; font-weight: 500; color: var(--gray-400); letter-spacing: .025em; }
-.tb-grid { display: grid; grid-template-columns: repeat(2, 140px); gap: 8px; }
+.tb-grid { display: grid; grid-template-columns: repeat(2, 140px); gap: 12px 8px; }
 
 .tb-cell { display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; text-align: left; }
 .tb-tile {
@@ -111,10 +113,10 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-cell:hover .tb-tile.has-art { box-shadow: 0 0 0 1px var(--gray-300); }
 .tb-cell.selected .tb-tile { border-color: transparent; box-shadow: 0 0 0 2px var(--brand); }
 .tb-cell.selected .tb-tile.has-art { border: 0; }
-.tb-caption { min-height: 12px; font-size: 10px; line-height: 12px; text-align: center; color: var(--gray-600); transition: color .15s; }
+.tb-caption { min-height: 15px; font-size: 11px; line-height: 15px; text-align: center; color: var(--gray-600); transition: color .15s; }
 .tb-cell.selected .tb-caption { color: var(--brand); font-weight: 500; }
 /* 박스 두 개 아래 작은 안내 (Wide / Tall Product) — 한 줄을 다 쓴다 */
-.tb-grid-note { grid-column: 1 / -1; margin: -2px 0 6px; font-size: 10px; line-height: 14px; color: #8A8078; }
+.tb-grid-note { margin: 4px 0 0; font-size: 10px; line-height: 14px; color: #8A8078; }
 
 /* 캔버스 */
 .tb-canvas { flex: 1; overflow-y: auto; padding: 24px; background: var(--canvas); }
@@ -218,19 +220,14 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-version { flex-shrink: 0; }
 .tb-version button { height: 34px; font-size: 12px; font-weight: 600; }
 
-/* 줄 제목 오른쪽 Light / Dark — 원 안 아이콘 + 라벨, 고른 쪽에 브랜드 링 */
-.tb-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.tb-tones { display: flex; gap: 10px; }
-.tb-tone { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; font-size: 11px; color: var(--gray-400); transition: color .15s; }
-.tb-tone:hover { color: var(--gray-700); }
-.tb-tone-dot {
-  width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 0 1px var(--gray-300); transition: box-shadow .15s;
+/* 팔레트 칸 이름 앞 Light / Dark 아이콘 — 원 안 해/달 */
+.tb-caption .tb-tone-dot {
+  width: 15px; height: 15px; margin-right: 4px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  vertical-align: -4px; box-shadow: 0 0 0 1px var(--gray-300);
 }
-.tb-tone-light .tb-tone-dot { background: #F3EFE8; color: #B08A3E; }
-.tb-tone-dark .tb-tone-dot { background: #3A3633; color: #E6E1D6; }
-.tb-tone.on { color: var(--gray-900); font-weight: 600; }
-.tb-tone.on .tb-tone-dot { box-shadow: 0 0 0 1.5px #fff, 0 0 0 3px var(--brand); }
+.tb-caption .tb-tone-dot svg { width: 9px; height: 9px; }
+.tb-tone-dot.tb-tone-light { background: #F3EFE8; color: #B08A3E; }
+.tb-tone-dot.tb-tone-dark { background: #3A3633; color: #E6E1D6; }
 
 /* 기능 박스 제목 아래 상태 표시 (예: 보류중) */
 .tb-acc-badge { align-self: flex-start; padding: 2px 8px; border-radius: 999px; background: #FFF4E5; color: #B26A00; font-size: 11px; font-weight: 600; }

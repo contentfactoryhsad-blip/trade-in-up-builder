@@ -45,12 +45,12 @@ export function newCopyState() {
     // 글자 모드 — 세일즈 배너 빌더와 같다. 버튼 이름은 글자색 기준: light = 흰 글자, dark = 검은 글자
     textMode: 'light',
     icon: {
-      kind: 'none', // 'none' | 'solid' | 'line' — Solid 와 Line 은 고른 아이콘을 따로 든다
-      color: 'white',
+      kind: 'line', // 'none' | 'solid' | 'line' — Solid 와 Line 은 고른 아이콘을 따로 든다. 기본은 켠 채(Line · Black) — Icons 칸은 LG.com 에만 있다
+      color: 'black',
       count: 3,
       ids: { solid: ['free-delivery', 'free-disposal', 'free-installation'], line: ['free-delivery', 'free-disposal', 'free-installation'] },
       labels: { solid: [null, null, null], line: [null, null, null] },
-      lastKind: 'solid', // Icons 체크를 다시 켤 때 돌아갈 종류
+      lastKind: 'line', // Icons 체크를 다시 켤 때 돌아갈 종류
     },
   };
 }
@@ -105,7 +105,7 @@ export function renderCopyPanel(cs, channel) {
     <div class="cc-field">
       <span class="cc-label">Text mode</span>
       <div class="cc-mode">
-        ${['light', 'dark'].map(m => `
+        ${['dark', 'light'].map(m => `
           <button type="button" class="cc-mode-btn${(cs.textMode ?? 'light') === m ? ' on' : ''}" data-text-mode="${m}">
             <span class="cc-mode-dot ${m}"></span>${m === 'light' ? 'Light' : 'Dark'}
           </button>`).join('')}

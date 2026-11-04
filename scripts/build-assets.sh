@@ -24,10 +24,10 @@ size_of() { sips -g pixelWidth "$1" | awk '/pixelWidth/ {print $2}'; }
 height_of() { sips -g pixelHeight "$1" | awk '/pixelHeight/ {print $2}'; }
 MANIFEST=""
 
-# 사용법: bake <id> <타일용 원본> <캔버스·패널용 원본> [타일 가로 비율 %, 기본 52] [타일 세로 중심 %, 기본 50] [타일 가로 중심 %, 기본 50] [미리보기 세로 중심 %, 기본 50 — builder-app.js 의 previewCy 와 맞춘다]
+# 사용법: bake <id> <타일용 원본> <캔버스·패널용 원본> [타일 가로 비율 %, 기본 52] [타일 세로 중심 %, 기본 50] [타일 가로 중심 %, 기본 50] [미리보기 세로 중심 %, 기본 50 — builder-app.js 의 previewCy 와 맞춘다] [미리보기 줌 ×10, 기본 33 — previewZoom 과 맞춘다]
 # 빈 무대(_no product)가 아직 없으면 타일용 원본으로 대신 굽고 경고만 남긴다 — 들어오면 다시 돌리면 된다
 bake() {
-  id=$1; tile=$2; stage=$3; tw=${4:-52}; ty=${5:-50}; tx=${6:-50}; py=${7:-50}
+  id=$1; tile=$2; stage=$3; tw=${4:-52}; ty=${5:-50}; tx=${6:-50}; py=${7:-50}; pz=${8:-33}
   if [ ! -f "$SRC/$tile" ]; then
     echo "  - $tile 없음 — $id 는 빈 박스"
     return 0
@@ -44,8 +44,8 @@ bake() {
   sips -s format jpeg -s formatOptions 85 -c $tch $tcw $off "$SRC/$tile" --out "$OUT/$id-thumb.jpg" >/dev/null
   sips -z 152 280 "$OUT/$id-thumb.jpg" >/dev/null
   n=$(size_of "$SRC/$stage")
-  ph=$((n * 10 / 33))
-  if [ "$py" = 50 ]; then poff=""; else poff="--cropOffset $((n * py / 100 - ph / 2)) $(((n - ph * 980 / 464) / 2))"; fi
+  ph=$((n * 10 / pz))
+  if [ "$py" = 50 ] && [ "$pz" = 33 ]; then poff=""; else poff="--cropOffset $((n * py / 100 - ph / 2)) $(((n - ph * 980 / 464) / 2))"; fi
   sips -s format jpeg -s formatOptions 85 -c $ph $((ph * 980 / 464)) $poff "$SRC/$stage" --out "$OUT/$id-preview.jpg" >/dev/null
   sips -z 928 1960 "$OUT/$id-preview.jpg" >/dev/null
   sips -s format jpeg -s formatOptions 85 -Z 1200 "$SRC/$stage" --out "$OUT/$id-frame.jpg" >/dev/null
@@ -65,10 +65,22 @@ bake() {
 }
 
 NEW="1102 정리"
+
+# 팔레트 타일(-thumb.jpg)만 — bake 의 타일 자르기와 같은 값. 사용법은 bake 의 앞 두 인자 + 타일 인자
+thumb_only() {
+  id=$1; tile=$2; tw=${3:-52}; ty=${4:-50}; tx=${5:-50}
+  n=$(size_of "$SRC/$tile")
+  tcw=$((n * tw / 100))
+  tch=$((tcw * 76 / 140))
+  if [ "$ty" = 50 ] && [ "$tx" = 50 ]; then off=""; else off="--cropOffset $((n * ty / 100 - tch / 2)) $((n * tx / 100 - tcw / 2))"; fi
+  sips -s format jpeg -s formatOptions 85 -c $tch $tcw $off "$SRC/$tile" --out "$OUT/$id-thumb.jpg" >/dev/null
+  sips -z 152 280 "$OUT/$id-thumb.jpg" >/dev/null
+  echo "thumb $id"
+}
 first_of() { for c in "$@"; do [ -f "$SRC/$c" ] && { echo "$c"; return 0; }; done; return 0; }
 
 # 새로 굽는 줄의 옛 결과물은 먼저 지운다 — 원본에서 빠진 변형이 남아 있지 않게
-rm -f "$OUT"/in-b1-* "$OUT"/up-b1-* "$OUT"/in-slot-* "$OUT"/up-slot-*
+rm -f "$OUT"/in-b1-* "$OUT"/up-b1-* "$OUT"/ni-b1-* "$OUT"/in-slot-* "$OUT"/up-slot-*
 
 # 원본이 더는 없는 줄(Basic 02 — 팔레트에서 숨김)은 이미 구운 파일과 manifest 항목을 그대로 둔다
 if [ -f "$OUT/manifest.json" ]; then
@@ -81,7 +93,7 @@ fi
 
 # Basic 01 — "1102 정리/<trade-in|trade-up>/basic/<컷>/" (둥근 단상: 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형)
 #   <컷>-thumbnail-<톤>.png            : 팔레트 타일 (제품 합성된 컷)
-#   <톤>/<컷>-standard.png             : 캔버스·패널 빈 무대 = Background Color 01 Standard (없으면 썸네일로 대신)
+#   <톤>/<컷>-standard.png             : 캔버스·패널 빈 무대 = Background Color 01 Standard (Light 만 — Dark 는 02~06 만 있다)
 #   <톤>/<컷>-color-0N.png             : 02~06 → id 끝 -color-0N
 #   <톤>/<컷>-color-eco.png            : 07 Eco → id 끝 -eco
 #   Dark 는 id 끝 -dark. 없는 변형은 건너뛴다 (그 칸을 골라도 기본 컷 그대로)
@@ -94,14 +106,15 @@ bake_cut() {
     th=$(first_of "$ld/$f/$f-thumbnail-$tone.png")
     [ -n "$th" ] || { echo "  - $ld/$f $tone 썸네일 없음 — $pre-$f$t 는 빈 박스"; continue; }
     SWATCH=$csw
-    bake $pre-$f$t "$th" "$d/$f-standard.png" "$@"
+    # Dark 는 Standard 컷이 없다 (Background Color 02~06 만) — 팔레트 타일만 굽고 manifest 에는 넣지 않는다
+    if [ $tone = dark ]; then thumb_only $pre-$f$t "$th" "$@"; else bake $pre-$f$t "$th" "$d/$f-standard.png" "$@"; fi
     for c in 01 02 03 04 05; do [ -f "$SRC/$d/$f-color-$c.png" ] && bake $pre-$f$t-color-$c "$th" "$d/$f-color-$c.png" "$@"; done
     [ -f "$SRC/$d/$f-color-eco.png" ] && bake $pre-$f$t-eco "$th" "$d/$f-color-eco.png" "$@"
     # No Old Product — <컷>/noproduct-standard/<톤>/<컷>-noproduct-{standard,color-0N,color-eco}.png (01-02 · 02-02 만)
     #   미리보기 오른쪽 위 No Old Product 를 켜면 이 컷으로 바뀐다 → id <컷>[-dark]-np[-color-0N|-eco]
     npd="$ld/$f/noproduct-standard/$tone"
-    if [ -f "$SRC/$npd/$f-noproduct-standard.png" ]; then
-      bake $pre-$f$t-np "$th" "$npd/$f-noproduct-standard.png" "$@"
+    if [ -d "$SRC/$npd" ]; then
+      [ $tone = light ] && [ -f "$SRC/$npd/$f-noproduct-standard.png" ] && bake $pre-$f$t-np "$th" "$npd/$f-noproduct-standard.png" "$@"
       for c in 01 02 03 04 05; do [ -f "$SRC/$npd/$f-noproduct-color-$c.png" ] && bake $pre-$f$t-np-color-$c "$th" "$npd/$f-noproduct-color-$c.png" "$@"; done
       [ -f "$SRC/$npd/$f-noproduct-color-eco.png" ] && bake $pre-$f$t-np-eco "$th" "$npd/$f-noproduct-color-eco.png" "$@"
     fi
@@ -121,22 +134,76 @@ for v in in up; do
   bake_cut $v-b1 "$ld" 02-02 "1250 600 500" 60 47 51 49
 done
 
-# Slot — "1102 정리/<버전>/slot/<가로형|세로형>/" → id <버전>-slot-h / -slot-v (톤 없음)
-#   standard-thumbnail.png : 팔레트 타일 (칸에 제품이 든 컷)
-#   img/standard.png       : 캔버스·패널 무대 (빈 칸), img/color-0N.png · img/color-eco.png = Background Color 02~07
-#   컬러 칸은 컬러 띠의 빈 자리 — 가로형은 아이콘 왼쪽(1060,1300 에서 150px), 세로형은 아이콘 아래(1430,1710 에서 100px)
+# 아이콘 없는 컷 (미리보기 오른쪽 위 Standard) — "1102 정리/basic-noicon/<컷>/<톤>/color-{standard,0N,eco}.png"
+#   Trade In · Up 이 같은 그림이라 한 번만 굽는다 → id ni-b1-<컷>[-dark][-color-0N|-eco]. 빌더가 <버전>-b1-<컷>[-dark]-ni… 로 읽는다
+#   구형 제품(01-02 · 02-02)도 빠진 컷. 타일·미리보기 자리는 위 bake_cut 과 같은 값
+bake_noicon() {
+  f=$1; shift
+  for tone in light dark; do
+    [ $tone = dark ] && t=-dark || t=""
+    d="$NEW/basic-noicon/$f/$tone"
+    SWATCH="1250 600 500"
+    [ -f "$SRC/$d/color-standard.png" ] && bake ni-b1-$f$t "$d/color-standard.png" "$d/color-standard.png" "$@"
+    for c in 01 02 03 04 05; do [ -f "$SRC/$d/color-$c.png" ] && bake ni-b1-$f$t-color-$c "$d/color-$c.png" "$d/color-$c.png" "$@"; done
+    [ -f "$SRC/$d/color-eco.png" ] && bake ni-b1-$f$t-eco "$d/color-eco.png" "$d/color-eco.png" "$@"
+    SWATCH=""
+  done
+  return 0
+}
+for f in 01-01 01-02; do bake_noicon $f 60 48 51 48; done
+bake_noicon 02-01 60 45 51 47
+bake_noicon 02-02 60 47 51 49
+
+# Slot — id <버전>-slot-v (세로형 = 아이콘 아래 칸 넷 한 줄, 1:4) / -slot-h (가로형 = 아이콘 양옆 두 칸씩, 2:2) (톤 없음)
+#   원본 = "1102 정리/<버전>/slot-new/<세로형|가로형>/"
+#     thumbnail.png : 팔레트 타일 (칸에 제품이 든 컷, 배경 있음)
+#     no product.png : 캔버스·패널 무대 (빈 칸), no product-eco.png = Background Color 07 Eco (나무 아이콘)
+#     무대 컷은 배경이 투명하다 (배경 컬러는 Figma 에서 따로 입힌다) — 굽기 전에 배경을 깔아 source/.flat/ 에 둔다
+#       Standard 01 · Eco 07 = 바탕색(240,236,228), 컬러 02~06 = "1102 정리/slot-new/bg/color-01~05.png" (3000² 배경, In·Up 공통) 위에 no product.png
+#       매체 사이즈 미리보기용으로 같은 배경을 줄여 assets/trade-in-up/slot-bg/color-0N.jpg 에도 둔다 (lib/channelSlots.js drawProductSlot 이 판에 cover 로 깐다)
+#   세로형 : 그림(아이콘 위끝 975 ~ 칸 아래끝 1816)이 가운데보다 위라 타일 폭 66% · 세로 중심 46%, 미리보기 세로 중심 46% · 줌 2.8 (builder-app.js previewCy · previewZoom)
+#            컬러 칸은 아이콘 면 왼쪽 아래(1230,1380 에서 100px — 화살표가 안 걸리는 자리)
+#   가로형 : 그림(901~2098 × 1174~1835)이 가운데라 타일 폭 66% · 미리보기 줌 2.8 (세로형과 같은 배율 — 화살표로 넘겨도 아이콘 크기가 같다)
+#            컬러 칸은 아이콘 면 왼쪽 아래(1255,1605 에서 60px)
+#   배경 컬러 컷의 컬러 칸은 배경 왼쪽 가운데(200,1350 에서 300px — 아이콘·칸이 없는 자리)
+BGDIR="$NEW/slot-new/bg"
+# 사용법: flat <투명 원본> <.flat 이름> [배경 이미지 — 없으면 바탕색]
+flat() {
+  mkdir -p "$SRC/.flat"
+  python3 -c "import sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert('RGBA')
+bg = Image.open(sys.argv[3]).convert('RGBA').resize(im.size) if len(sys.argv) > 3 else Image.new('RGBA', im.size, (240, 236, 228, 255))
+bg.alpha_composite(im); bg.convert('RGB').save(sys.argv[2])" "$SRC/$1" "$SRC/.flat/$2.png" ${3:+"$SRC/$3"}
+}
 bake_slot() {
-  v=$1; shape=$2; key=$3; SWATCH=$4
-  d="$NEW/trade-$v/slot/$shape"
-  bake $v-slot-$key "$d/standard-thumbnail.png" "$d/img/standard.png" 54
-  for c in 01 02 03 04 05; do [ -f "$SRC/$d/img/color-$c.png" ] && bake $v-slot-$key-color-$c "$d/standard-thumbnail.png" "$d/img/color-$c.png" 54; done
-  [ -f "$SRC/$d/img/color-eco.png" ] && bake $v-slot-$key-eco "$d/standard-thumbnail.png" "$d/img/color-eco.png" 54
+  v=$1; shape=$2; key=$3; sw=$4; shift 4
+  d="$NEW/trade-$v/slot-new/$shape"
+  [ -f "$SRC/$d/no product.png" ] || { echo "  - $d/no product.png 없음 — $v-slot-$key 는 빈 박스"; return 0; }
+  SWATCH=$sw
+  flat "$d/no product.png" "$v-slot-$key"
+  bake $v-slot-$key "$d/thumbnail.png" ".flat/$v-slot-$key.png" "$@"
+  if [ -f "$SRC/$d/no product-eco.png" ]; then
+    flat "$d/no product-eco.png" "$v-slot-$key-eco"
+    bake $v-slot-$key-eco "$d/thumbnail.png" ".flat/$v-slot-$key-eco.png" "$@"
+  fi
+  SWATCH="200 1350 300"
+  for c in 01 02 03 04 05; do
+    [ -f "$SRC/$BGDIR/color-$c.png" ] || continue
+    flat "$d/no product.png" "$v-slot-$key-color-$c" "$BGDIR/color-$c.png"
+    bake $v-slot-$key-color-$c "$d/thumbnail.png" ".flat/$v-slot-$key-color-$c.png" "$@"
+  done
   SWATCH=""
   return 0
 }
+rm -rf "$SRC/.flat" "$OUT/slot-bg"
+mkdir -p "$OUT/slot-bg"
+for c in 01 02 03 04 05; do
+  [ -f "$SRC/$BGDIR/color-$c.png" ] && sips -s format jpeg -s formatOptions 90 -Z 1500 "$SRC/$BGDIR/color-$c.png" --out "$OUT/slot-bg/color-$c.jpg" >/dev/null
+done
 for v in in up; do
-  bake_slot $v 가로형 h "1060 1300 150"
-  bake_slot $v 세로형 v "1430 1710 100"
+  bake_slot $v 세로형 v "1230 1380 100" 66 46 50 46 28
+  bake_slot $v 가로형 h "1255 1605 60" 66 50 50 50 28
 done
 
 printf '[%s\n]\n' "$MANIFEST" > "$OUT/manifest.json"
