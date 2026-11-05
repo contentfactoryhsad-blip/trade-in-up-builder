@@ -143,11 +143,73 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
  * Product Slot 판 — 배경 컬러를 깔고, 칸(흰 둥근 사각형, 불투명도 SLOT_ALPHA)과 칸 안 제품, 그 위에 아이콘을 Figma 자리대로 그린다 (칸은 아이콘 아래 레이어).
  *   slot.icon  : 아이콘 컴포넌트 인스턴스 [x, y, 한 변] — 컴포넌트 2000² 안에서 아이콘 그림(opts.icon)이 놓이는 자리가 PSLOT_ICON
  *   slot.boxes : [x, y, 한 변, 모서리] — 제품은 칸 짧은 변의 BOX_PAD 만큼 사방을 비우고 비율대로 가운데 (빌더 캔버스와 같다)
- *   opts.products[i] : i 번 칸 제품 { img, w, h } (없으면 빈 칸), opts.bg : 배경 컬러, opts.bgImg : 배경 이미지 (Background Color 02~06 — 판에 cover 로 깐다)
+ *   opts.products[i] : i 번 칸 제품 { img, w, h } (없으면 빈 칸), opts.bg : 배경 컬러, opts.bgImg : 배경 이미지 (판에 cover 로 깐다)
+ *   opts.box : { alpha, glass } — Box 탭 설정 (builder-app boxLook). 없으면 흰 80%. glass 면 drawGlassBox
  */
+/**
+ * 칸 한 개 — White 는 흰 사각형, Glass 는 세일즈 배너 빌더 글래스 박스와 같은 비율
+ *   (흰 채움 + 흰 15% 테두리 폭 1.573/234.748 · 왼쪽 위 안쪽 하이라이트 흰 30%).
+ *   두 재질 모두 그림자와 머리카락 테두리(검정 5%)를 둘러, 배경의 밝은 하이라이트(흰색에 가까운 자리)에 칸이 겹쳐도 윤곽이 남는다.
+ *   그림자 — 두 재질 모두 둘레 3.5%(안 내림) + 아래 3.5%(6.29/234.748 내려서 같은 만큼 흐림) 두 겹.
+ *            위·옆에도 윤곽이 생기고, 아래는 합쳐서 약 7% — 세일즈 배너 빌더 박스 그림자(아래 7%)보다 진해지지 않는다
+ *   뒤 흐림은 뺐다 — 배경이 부드러운 그라데이션이라 흐려도 차이가 없다
+ */
+const BOX_EDGE = 'rgba(0,0,0,0.05)';
+export function drawBox(ctx, x, y, s, r, look) {
+  ctx.save();
+  {
+    // 그림자 — CSS box-shadow 처럼 칸 바깥에만 (칸 안은 비워 둔다)
+    const sh = s * 6.29 / 234.748;
+    const layers = [[0.035, 0], [0.035, sh]]; // [알파, 아래로 내림]
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x - s, y - s, s * 3, s * 3);
+    ctx.roundRect(x, y, s, s, r);
+    ctx.clip('evenodd');
+    ctx.shadowBlur = sh;
+    ctx.shadowOffsetX = 10000;
+    ctx.fillStyle = '#000';
+    for (const [a, dy] of layers) {
+      ctx.shadowColor = `rgba(0,0,0,${a})`;
+      ctx.shadowOffsetY = dy;
+      ctx.beginPath();
+      ctx.roundRect(x - 10000, y, s, s, r);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.beginPath();
+  ctx.roundRect(x, y, s, s, r);
+  ctx.fillStyle = `rgba(255,255,255,${look.alpha})`;
+  ctx.fill();
+  // 머리카락 테두리 — 칸 가장자리에 걸쳐 (밝은 배경에서도 윤곽이 남게)
+  ctx.strokeStyle = BOX_EDGE;
+  ctx.lineWidth = Math.max(0.5, s * 0.9 / 234.748);
+  ctx.stroke();
+  if (look.glass) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, s, s, r);
+    ctx.clip();
+    const sw = s * 1.573 / 234.748, d = s * 0.707 / 234.748 * 2;
+    // 안쪽 하이라이트 — 왼쪽 위 가장자리 (inset 0.71px 0.71px, 흰 30%)
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = d * 2;
+    ctx.beginPath();
+    ctx.roundRect(x - d, y - d, s, s, r);
+    ctx.stroke();
+    // 테두리 — 안쪽으로 sw
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = sw * 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, s, s, r);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export const PSLOT_ICON = [330.2, 294.4, 1339.6, 1491.2]; // 컴포넌트 이미지 채우기(source/1102 정리/<in|up> icon-fixed.png · -eco.png, 2015×2243)의 Crop imageTransform 에서 구한 자리 = assets/trade-in-up/slot-icon/*.png
 const BOX_PAD = 0.1;
-const SLOT_ALPHA = 0.7; // 칸 불투명도 — PSD slot 레이어(179/255) · Figma slot 사각형과 같다. 배경 컬러가 비쳐 보인다
+const SLOT_ALPHA = 0.8; // 칸 불투명도 기본 (opts.box 가 없을 때) — builder-app BOX_STYLES White 와 같다. 배경 컬러가 비쳐 보인다
 function drawProductSlot(ctx, slot, opts) {
   const { w: W, h: H } = slot;
   ctx.fillStyle = opts.bg || '#F0ECE4';
@@ -160,10 +222,7 @@ function drawProductSlot(ctx, slot, opts) {
     ctx.drawImage(bi, (W - w) / 2, (H - h) / 2, w, h);
   }
   slot.boxes.forEach(([x, y, s, r], i) => {
-    ctx.fillStyle = `rgba(255,255,255,${SLOT_ALPHA})`;
-    ctx.beginPath();
-    ctx.roundRect(x, y, s, s, r);
-    ctx.fill();
+    drawBox(ctx, x, y, s, r, opts.box || { alpha: SLOT_ALPHA });
     const p = opts.products?.[i];
     if (!p?.img) return;
     const inner = s * (1 - BOX_PAD * 2);
@@ -188,7 +247,7 @@ const PLACEHOLDER = {
   disclaimer: '*T&C’s apply',
   disclaimerMedia: '*T&C’s apply',
 };
-const LOGOS = { white: 'assets/trade-in-up/logo/lg-logo-white.svg', og: 'assets/trade-in-up/logo/lg-logo-og.svg', ogwhite: 'assets/trade-in-up/logo/lg-logo-ogwhite.svg' };
+const LOGOS = { white: 'assets/trade-in-up/logo/lg-logo-white.svg', black: 'assets/trade-in-up/logo/lg-logo-black.svg', og: 'assets/trade-in-up/logo/lg-logo-og.svg', ogwhite: 'assets/trade-in-up/logo/lg-logo-ogwhite.svg' };
 
 /** 글 상자 폭에 맞춰 줄을 나눈다 — 줄바꿈(Enter)은 그대로, 넘치면 단어 단위로. maxLines 를 넘으면 마지막 줄 끝을 … 로 */
 function wrap(ctx, text, maxW, maxLines = Infinity) {
@@ -264,7 +323,7 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
     ctx.restore();
   }
 
-  // 로고 — 고른 게 없으면 템플릿 기본(White)
+  // 로고 — 고른 게 없으면 White (builder-app 이 판 종류의 기본을 넣어 준다 — Product Slot 은 OG)
   if (slot.logo && show.logo) {
     const [lx, ly, lw, lh] = slot.logo;
     const img = logoImage(cs.logoId || 'white');

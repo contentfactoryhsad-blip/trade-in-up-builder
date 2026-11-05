@@ -3,6 +3,7 @@
 //   node scripts/slot-data/product-slot.mjs
 // figma-product-slot.json 은 { 매체 key: { 프레임 이름: … } } — Figma "Trade In Up - Product Slot 01"(세로형 = v) · "… 02"(가로형 = h) › Dark mode › <매체> 섹션의
 // 프레임마다 아이콘(KV 인스턴스)이 보이는 쪽 하나만 [배치, 아이콘 인스턴스 [x, y, 한 변], 칸 [[x, y, 한 변, 모서리], …]] 로 use_figma 로 읽은 값이다.
+//   좌표는 판 기준 absoluteBoundingBox 로 읽는다 — slot 묶음을 뒤집어(flip) 둔 판은 x · y 가 반대쪽 모서리라 그대로 쓰면 칸이 한 변만큼 밀린다
 //   한 사이즈는 01 · 02 중 한 보드에만 쓰인다 (다른 쪽은 아이콘·칸을 숨겨 둔다). 칸 번호는 Figma 순서 = 빌더 박스 번호
 //   Product Slot 보드에는 카피용 그라데이션이 없다 (fades 없음)
 // Figma 를 고치면 다시 뽑는다.

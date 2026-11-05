@@ -30,9 +30,10 @@ const FIELDS = [
   { key: 'cta', label: 'CTA button', maxLength: 15, toggle: 'cta' },
 ];
 
-/** LG 로고 — Sales Banner Builder 와 같은 세 벌. 아무것도 안 고르면 템플릿 기본(White) */
+/** LG 로고 — Figma "LG logo" 컴포넌트(white · Black · color)에 OG_White 를 더한 네 벌. 기본은 builder-app 이 판 종류마다 정한다 (logoIds) */
 const LOGO_VARIANTS = [
   { id: 'white', label: 'LG White', src: 'assets/trade-in-up/logo/lg-logo-white.svg', thumbBg: '#1a1a1a' },
+  { id: 'black', label: 'LG Black', src: 'assets/trade-in-up/logo/lg-logo-black.svg', thumbBg: '#eeebe6' },
   { id: 'og', label: 'LG OG', src: 'assets/trade-in-up/logo/lg-logo-og.svg', thumbBg: '#eeebe6' },
   { id: 'ogwhite', label: 'LG OG_White', src: 'assets/trade-in-up/logo/lg-logo-ogwhite.svg', thumbBg: '#1a1a1a' },
 ];
@@ -270,8 +271,7 @@ export function bindCopyPanel(root, cs, rerender, onInput = () => {}) {
     if (!t || !root.contains(t)) return;
     if (t.dataset.textMode) { cs.textMode = t.dataset.textMode; rerender(); }
     else if (t.dataset.logo) {
-      const on = (cs.logoId ?? 'white') === t.dataset.logo;
-      cs.logoId = on || t.dataset.logo === 'white' ? null : t.dataset.logo;
+      cs.logoId = t.dataset.logo;
       rerender();
     } else if (t.dataset.iconKind) { cs.icon.kind = t.dataset.iconKind; cs.icon.lastKind = cs.icon.kind; rerender(); }
     else if (t.dataset.iconColor) { cs.icon.color = t.dataset.iconColor; rerender(); }

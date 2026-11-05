@@ -113,7 +113,7 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-cell:hover .tb-tile.has-art { box-shadow: 0 0 0 1px var(--gray-300); }
 .tb-cell.selected .tb-tile { border-color: transparent; box-shadow: 0 0 0 2px var(--brand); }
 .tb-cell.selected .tb-tile.has-art { border: 0; }
-.tb-caption { min-height: 15px; font-size: 11px; line-height: 15px; text-align: center; color: var(--gray-600); transition: color .15s; }
+.tb-caption { min-height: 15px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11px; line-height: 15px; text-align: center; color: var(--gray-600); transition: color .15s; }
 .tb-cell.selected .tb-caption { color: var(--brand); font-weight: 500; }
 /* 박스 두 개 아래 작은 안내 (Wide / Tall Product) — 한 줄을 다 쓴다 */
 .tb-grid-note { margin: 4px 0 0; font-size: 10px; line-height: 14px; color: #8A8078; }
@@ -220,10 +220,10 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-version { flex-shrink: 0; }
 .tb-version button { height: 34px; font-size: 12px; font-weight: 600; }
 
-/* 팔레트 칸 이름 앞 Light / Dark 아이콘 — 원 안 해/달 */
+/* 팔레트 칸 이름 앞 Light / Dark 아이콘 — 원 안 해/달. 캡션이 flex 라 글자와 세로 가운데가 맞는다 */
 .tb-caption .tb-tone-dot {
-  width: 15px; height: 15px; margin-right: 4px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  vertical-align: -4px; box-shadow: 0 0 0 1px var(--gray-300);
+  flex: none; width: 15px; height: 15px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px var(--gray-300);
 }
 .tb-caption .tb-tone-dot svg { width: 9px; height: 9px; }
 .tb-tone-dot.tb-tone-light { background: #F3EFE8; color: #B08A3E; }
@@ -474,3 +474,12 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .cc-mode-dot { width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgb(0 0 0 / .1); }
 .cc-mode-dot.light { background: #fff; }
 .cc-mode-dot.dark { background: #000; }
+
+/* Box — Background Color 아래. 제목 · 설명 한 줄 · 투명도 슬라이더 */
+.tb-box { margin-top: 20px; display: flex; flex-direction: column; gap: 6px; }
+.tb-box .hint { margin: 0; font-size: 12px; line-height: 16px; color: var(--gray-400); }
+.tb-box-opacity { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; }
+.tb-box-opacity .label { color: var(--gray-600); }
+.tb-box-opacity .val { margin-left: auto; font-size: 11px; color: var(--gray-400); font-variant-numeric: tabular-nums; }
+.tb-box-opacity .link { font-size: 11px; }
+.tb-box input[data-box-opacity] { width: 100%; accent-color: var(--brand); }

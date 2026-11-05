@@ -20,7 +20,7 @@ import { blobToDataUrl, loadImage } from './lib/productApi.js';
 import { importFromUrl, importFromFile, editProduct } from './lib/productImportFlow.js';
 import { DEFAULT_FX, cloneFx, createBackground, drawComposite } from './lib/composite.js';
 import { orderQuad, warpInfill, colorField, detectObjects, adjustBackground, glowLayer } from './lib/infill.js';
-import { slotsForChannel, drawSlot, logosReady, onIconLoad } from './lib/channelSlots.js';
+import { slotsForChannel, drawSlot, drawBox, logosReady, onIconLoad } from './lib/channelSlots.js';
 import { newCopyState, renderCopyPanel, bindCopyPanel } from './lib/channelCopy.js';
 
 /**
@@ -92,8 +92,10 @@ const BG_COLORS = [
   { key: 'c7', label: '07', name: 'Eco', suffix: '-eco' },
 ];
 
-/** 그 줄에서 고를 수 있는 칸 — Dark 톤에는 Standard·Eco 컷이 없어 01 Standard · 07 Eco 를 숨긴다 */
-const bgColorsFor = groupKey => BG_COLORS.filter(c => !((c.key === 'c1' || c.key === 'c7') && toneOf(groupKey) === 'dark'));
+/** 그 줄에서 고를 수 있는 칸 — Dark 톤에는 Standard·Eco 컷이 없어 01 Standard · 07 Eco 를 숨긴다.
+ *  Product Slot 은 배경 컷이 구워진 칸만 (컬러가 4 개라 06 이 비어 Eco 가 06 번이 된다) */
+const bgColorsFor = groupKey => BG_COLORS.filter(c => !((c.key === 'c1' || c.key === 'c7') && toneOf(groupKey) === 'dark')
+  && !(groupKey === 'slot' && c.suffix && !manifest.has(`${state.version}-slot-v${c.suffix}`)));
 /** 그 줄에서 켜 보일 칸 — 고른 칸이 숨겨져 있으면 그 줄의 첫 칸 (Light 01 Standard · Dark 02) */
 const bgColorOf = groupKey => { const list = bgColorsFor(groupKey); return list.some(c => c.key === state.bgColor) ? state.bgColor : list[0].key; };
 
@@ -199,7 +201,7 @@ const findAsset = id => {
 // video 끝 ?v= — 영상을 바꾸면 숫자를 올린다 (브라우저가 옛 영상을 붙들고 있지 않게)
 const INFO = {
   product: { title: 'Product & Shadow', video: 'info/product-shadow.mp4?v=2', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then move, resize and add shadows to it freely — on the preview and in the Edit panel on the right.' }, // 크리스마스 빌더 Product image 설명 그대로
-  slot: { title: 'Products', video: 'info/product-slot.mp4?v=2', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then adjust its size and place it in each box.' },
+  slot: { title: 'Products', video: 'info/product-slot.mp4?v=4', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then adjust its size and place it in each box.' },
 };
 const infoDot = key => `<span class="tb-info" data-info="${key}" role="button" tabindex="0" aria-label="About ${esc(INFO[key].title)}">i</span>`;
 
@@ -250,7 +252,11 @@ const state = {
   copy: newCopyState(), // 매체를 고르면 Edit panel 에 뜨는 Copy 값 (lib/channelCopy.js) — 매체를 바꿔도 이어진다
   // 글자 모드는 판 종류마다 따로 — Main Key Visual 은 Light(흰 글자), Product Slot 은 밝은 배경이라 Dark(검은 글자)가 기본. copy.textMode 는 지금 판 종류 값을 옮겨 둔 것
   textModes: { kv: 'light', pslot: 'dark' },
+  // 로고도 판 종류마다 — Figma Main Key Visual 보드는 white, Product Slot 01 · 02 보드는 color(= LG OG) 로고
+  logoIds: { kv: 'white', pslot: 'og' },
   open: new Set(['product']), // Product & Shadow 는 늘 펼쳐 둔다 (EDIT_SECTIONS fixed)
+  // Product Slot 칸 투명도 — Background Color 아래 Box 슬라이더. null = 기본 80%
+  box: { opacity: null },
   fxOpen: false, // 고른 제품 줄 아래 Shadow 드롭다운을 펼쳤나
   guide: false, // 프리뷰에서 고른 제품에 크기 조절 상자를 띄웠나 (배경을 누르면 끈다)
   bg: null,
@@ -508,7 +514,7 @@ const SLOT_ASSETS = new Map([['b1-01-01', ''], ['b1-01-02', ''], ['b1-02-01', 't
 const boardOf = hit => hit.group.key === 'slot' ? 'pslot' : SLOT_ASSETS.get(hit.asset.base);
 /** 지금 판 종류의 글자 모드를 copy 에 옮긴다 — Copy 패널·매체 미리보기를 그리기 전에 */
 const textKind = () => findAsset(state.selectedId)?.group.key === 'slot' ? 'pslot' : 'kv';
-const syncTextMode = () => { state.copy.textMode = state.textModes[textKind()]; };
+const syncTextMode = () => { const k = textKind(); state.copy.textMode = state.textModes[k]; state.copy.logoId = state.logoIds[k]; };
 // Product Slot 판 아이콘 — 버전 × (Background Color 07 Eco 면 나무, 아니면 클리어). 처음 읽히면 다시 그린다
 const slotIcons = new Map();
 function slotIcon(version) {
@@ -521,11 +527,12 @@ function slotIcon(version) {
   }
   return slotIcons.get(src);
 }
-// Product Slot 판 배경 이미지 — Background Color 02~06 에 배경 컷이 구워져 있으면 (build-assets.sh slot-bg). 없으면 null = 바탕색
+// Product Slot 판 배경 이미지 (build-assets.sh slot-bg) — Standard 01 은 standard, 02~06 · Eco 07 은 그 컬러 배경 컷이 구워져 있을 때. 못 읽으면 바탕색
 function slotBg(version) {
   const sfx = BG_COLORS.find(c => c.key === bgColorOf('slot'))?.suffix;
-  if (!sfx?.startsWith('-color-') || !manifest.has(`${version}-slot-v${sfx}`)) return null;
-  const src = `assets/trade-in-up/slot-bg/${sfx.slice(1)}.jpg`;
+  const name = !sfx ? 'standard' : manifest.has(`${version}-slot-v${sfx}`) ? sfx.slice(1) : null;
+  if (!name) return null;
+  const src = `assets/trade-in-up/slot-bg/${name}.jpg`;
   if (!slotIcons.has(src)) {
     const img = new Image();
     img.onload = () => renderSlots();
@@ -609,7 +616,7 @@ function renderSlots() {
     const comp = !pslot && state.bg?.assetId === state.selectedId ? $('#comp') : null;
     const fadeColor = comp ? fadeColorFor(comp) : null;
     // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
-    const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version) } : {};
+    const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version), box: boxLook() } : {};
     const canvases = box.querySelectorAll('canvas[data-slot]');
     slots.forEach((sl, i) => {
       const c = canvases[i];
@@ -669,6 +676,7 @@ function renderEdit() {
             }).join('')}
           </div>
         </div>` : ''}
+      ${asset.boxes && state.step === 1 ? `<div class="tb-box" id="boxControl">${boxPanel()}</div>` : ''}
     </div>
     ${EDIT_SECTIONS.map(sec => `
       <section class="tb-acc${state.open.has(sec.key) || sec.fixed ? ' open' : ''}${sec.fixed ? ' fixed' : ''}" data-key="${sec.key}"${sec.hidden ? ' hidden style="display:none"' : ''}>
@@ -771,6 +779,26 @@ const SLOT_PANEL = `
     <div class="list" id="productList"></div>
     <p class="status" id="status"></p>
   </div>`;
+
+/**
+ * Box — Background Color 아래. 칸은 한 가지 (흰 채움 + 글래스 테두리·하이라이트 + 둘레·아래 그림자 — lib/channelSlots.js drawBox),
+ * 투명도만 고른다. 기본 80%
+ */
+const BOX_ALPHA = 0.8;
+/** 지금 칸 모양 — 캔버스·매체 미리보기가 같이 쓴다 */
+const boxLook = () => ({ alpha: state.box.opacity ?? BOX_ALPHA, glass: true });
+function boxPanel() {
+  const v = Math.round(boxLook().alpha * 100);
+  return `
+    <p class="tb-acc-item-label">Box</p>
+    <p class="hint">Set how see-through the product boxes are.</p>
+    <div class="tb-box-opacity">
+      <span class="label">Opacity</span>
+      <span class="val" id="boxOpacityVal">${v}%</span>
+      <button type="button" class="link" data-act="box-reset"${state.box.opacity === null ? ' hidden' : ''}>Reset</button>
+    </div>
+    <input type="range" min="0" max="100" step="1" value="${v}" data-box-opacity aria-label="Box opacity" />`;
+}
 
 /** Scene Color 박스 안 — studio.html 의 Screen infill / Color mood / Background objects 와 같은 구성. */
 const SCENE_PANEL = `
@@ -1093,15 +1121,48 @@ function paint(ctx) {
         glow: scr && scr.glow && { canvas: scr.glow, x: Math.round(rect.x) - scr.pad, y: Math.round(rect.y) - scr.pad },
       };
     });
+  const boxes = inBox && findAsset(state.selectedId)?.asset.boxes;
   drawComposite(ctx, coloredBackground() || state.bg.px, items, {
-    // 화면 빛은 배경 위·그림자와 제품 아래에 번진다
+    // 화면 빛은 배경 위·그림자와 제품 아래에 번진다. Slot 칸도 배경 바로 위·제품 아래 (무대 컷에는 칸이 없다 — Box 탭 설정대로 그린다)
     afterBackground: c => {
+      if (boxes) drawBoxes(c, boxes);
       if (!state.mood.on || !state.mood.glow) return;
       c.globalCompositeOperation = 'screen';
       c.globalAlpha = state.mood.glow / 100;
       for (const it of items) if (it.glow) c.drawImage(it.glow.canvas, it.glow.x, it.glow.y);
     },
   });
+}
+
+/**
+ * Slot 칸 — 무대 픽셀 좌표로 (모서리 16px / 3000 — PSD slot 레이어와 같다). 무대 컷에는 아이콘이 구워져 있어 칸이 아이콘을 덮으므로,
+ * 칸 자리 안에서만 아이콘(칸 없는 컷에서 잘라 둔 것)을 한 번 더 얹어 아이콘이 칸 위로 오게 한다 (PSD 레이어 순서와 같다)
+ */
+const SLOT_ICON_CROP = [1160, 950, 720, 850]; // build-assets.sh slot-icon-stage — 3000² 무대에서 잘라 둔 자리
+const stageIcons = new Map();
+function stageIcon(hit) {
+  const key = hit.asset.base.replace('slot-', '');
+  const src = `assets/trade-in-up/slot-icon-stage/${hit.asset.version}-${key}-${bgColorOf('slot') === 'c7' ? 'wood' : 'clear'}.png`;
+  if (!stageIcons.has(src)) {
+    const img = new Image();
+    img.onload = () => scheduleDraw();
+    img.src = src;
+    stageIcons.set(src, img);
+  }
+  return stageIcons.get(src);
+}
+function drawBoxes(ctx, boxes) {
+  const { w: W, h: H } = state.bg, look = boxLook(), r = 16 / 3000 * W;
+  for (const b of boxes) drawBox(ctx, b.x * W, b.y * H, b.w * W, r, look);
+  const icon = stageIcon(findAsset(state.selectedId));
+  if (!icon.complete || !icon.naturalWidth) return;
+  ctx.save();
+  ctx.beginPath();
+  for (const b of boxes) ctx.roundRect(b.x * W - 2, b.y * H - 2, b.w * W + 4, b.h * H + 4, r);
+  ctx.clip();
+  const k = W / 3000, [cx, cy, cw, ch] = SLOT_ICON_CROP;
+  ctx.drawImage(icon, cx * k, cy * k, cw * k, ch * k);
+  ctx.restore();
 }
 
 // ── 제품 가져오기 ─────────────────────────────────────────
@@ -1573,8 +1634,8 @@ $('#palette').addEventListener('click', e => {
 
 const editBody = $('#editBody');
 // Copy 패널 입력 — 글자는 사이즈만 다시, 체크·로고·모드처럼 패널 모양이 바뀌는 건 패널까지 (크리스마스 빌더와 같다)
-// Text mode 버튼은 copy.textMode 를 바꾸고 첫 콜백을 부른다 — 그 값을 지금 판 종류 몫으로 남긴다
-bindCopyPanel(editBody, state.copy, () => { state.textModes[textKind()] = state.copy.textMode; renderEdit(); renderSlots(); }, () => renderSlots());
+// Text mode · 로고 버튼은 copy 값을 바꾸고 첫 콜백을 부른다 — 그 값을 지금 판 종류 몫으로 남긴다
+bindCopyPanel(editBody, state.copy, () => { const k = textKind(); state.textModes[k] = state.copy.textMode; state.logoIds[k] = state.copy.logoId; renderEdit(); renderSlots(); }, () => renderSlots());
 
 editBody.addEventListener('click', e => {
   // 기능 박스 펼치기/접기 — 다시 그리지 않고 클래스만 바꿔야 높이 전환이 보인다
@@ -1628,6 +1689,15 @@ editBody.addEventListener('click', e => {
 
   const baBtn = e.target.closest('[data-mseg="on"] button');
   if (baBtn) { state.mood.on = baBtn.dataset.v === 'after'; update(); return; }
+
+  // Box — Reset 은 기본 80% 로
+  if (e.target.closest('[data-act="box-reset"]')) {
+    state.box.opacity = null;
+    const box = $('#boxControl');
+    if (box) box.innerHTML = boxPanel();
+    update();
+    return;
+  }
 
 
 
@@ -1719,6 +1789,14 @@ editBody.addEventListener('input', e => {
     return;
   }
   if (t.id === 'eraseSize') { state.eraseSize = Number(t.value); update(); return; }
+  if (t.hasAttribute('data-box-opacity')) {
+    state.box.opacity = Number(t.value) / 100;
+    $('#boxOpacityVal').textContent = `${t.value}%`;
+    const reset = editBody.querySelector('[data-act="box-reset"]');
+    if (reset) reset.hidden = false;
+    update();
+    return;
+  }
   if (t.dataset.m) { state.mood[t.dataset.m] = Number(t.value); update(); return; }
   const path = t.dataset.fx;
   if (path) { setPath(activeFx(), path, t.type === 'checkbox' ? t.checked : Number(t.value)); update(); }

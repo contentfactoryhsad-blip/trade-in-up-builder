@@ -159,13 +159,15 @@ bake_noicon 02-02 60 47 51 49
 #     thumbnail.png : 팔레트 타일 (칸에 제품이 든 컷, 배경 있음)
 #     no product.png : 캔버스·패널 무대 (빈 칸), no product-eco.png = Background Color 07 Eco (나무 아이콘)
 #     무대 컷은 배경이 투명하다 (배경 컬러는 Figma 에서 따로 입힌다) — 굽기 전에 배경을 깔아 source/.flat/ 에 둔다
-#       Standard 01 · Eco 07 = 바탕색(240,236,228), 컬러 02~06 = "1102 정리/slot-new/bg/color-01~05.png" (3000² 배경, In·Up 공통) 위에 no product.png
-#       매체 사이즈 미리보기용으로 같은 배경을 줄여 assets/trade-in-up/slot-bg/color-0N.jpg 에도 둔다 (lib/channelSlots.js drawProductSlot 이 판에 cover 로 깐다)
+#       배경 = "1102 정리/slot-new/bg/" (3000², In·Up 공통) — standard.png = Standard 01, color-01~05.png = 컬러 02~06, eco.png = Eco 07 (없으면 바탕색 240,236,228)
+#         Figma "Trade In Up - Product Slot BG" 컴포넌트의 배경(레이어 위에서부터 Standard → … → Eco)에 흰색 50% 를 씌운 값
+#         = 아이보리 베이지 · 퍼플 · 핑크 · 오렌지 · 옐로 · (06 없음) · 그린
+#       매체 사이즈 미리보기용으로 같은 배경을 줄여 assets/trade-in-up/slot-bg/<standard|color-0N|eco>.jpg 에도 둔다 (lib/channelSlots.js drawProductSlot 이 판에 cover 로 깐다)
 #   세로형 : 그림(아이콘 위끝 975 ~ 칸 아래끝 1816)이 가운데보다 위라 타일 폭 66% · 세로 중심 46%, 미리보기 세로 중심 46% · 줌 2.8 (builder-app.js previewCy · previewZoom)
 #            컬러 칸은 아이콘 면 왼쪽 아래(1230,1380 에서 100px — 화살표가 안 걸리는 자리)
 #   가로형 : 그림(901~2098 × 1174~1835)이 가운데라 타일 폭 66% · 미리보기 줌 2.8 (세로형과 같은 배율 — 화살표로 넘겨도 아이콘 크기가 같다)
 #            컬러 칸은 아이콘 면 왼쪽 아래(1255,1605 에서 60px)
-#   배경 컬러 컷의 컬러 칸은 배경 왼쪽 가운데(200,1350 에서 300px — 아이콘·칸이 없는 자리)
+#   배경 컬러 컷(02~06 · Eco)의 컬러 칸은 배경 왼쪽 가운데(200,1350 에서 300px — 아이콘·칸이 없는 자리). Main Key Visual 처럼 Eco 칸도 배경색(그린)
 BGDIR="$NEW/slot-new/bg"
 # 사용법: flat <투명 원본> <.flat 이름> [배경 이미지 — 없으면 바탕색]
 flat() {
@@ -176,30 +178,60 @@ im = Image.open(sys.argv[1]).convert('RGBA')
 bg = Image.open(sys.argv[3]).convert('RGBA').resize(im.size) if len(sys.argv) > 3 else Image.new('RGBA', im.size, (240, 236, 228, 255))
 bg.alpha_composite(im); bg.convert('RGB').save(sys.argv[2])" "$SRC/$1" "$SRC/.flat/$2.png" ${3:+"$SRC/$3"}
 }
+# 팔레트 타일 바탕 바꾸기 — thumbnail.png 는 단색 바탕(240,236,228) 위에 아이콘·칸·제품을 합친 컷이라, 배경 없는 no product.png 의 알파
+# (칸 = 흰 70%)와 썸네일에만 있는 제품(불투명)만큼 남기고 나머지 바탕을 배경 컷으로 바꾼다. 사용법: rebg_thumb <thumbnail> <no product> <배경> <.flat 이름>
+rebg_thumb() {
+  mkdir -p "$SRC/.flat"
+  python3 -c "import sys, numpy as np
+from PIL import Image
+t = np.asarray(Image.open(sys.argv[1]).convert('RGB')).astype(float)
+n = np.asarray(Image.open(sys.argv[2]).convert('RGBA')).astype(float)
+g = np.asarray(Image.open(sys.argv[3]).convert('RGB').resize((t.shape[1], t.shape[0]))).astype(float)
+flat = np.array([240, 236, 228], float)
+a = n[..., 3:] / 255
+prod = np.abs(t - (n[..., :3] * a + flat * (1 - a))).max(-1, keepdims=True) > 10
+a = np.where(prod, 1.0, a)
+Image.fromarray(np.clip(t + (1 - a) * (g - flat) + .5, 0, 255).astype(np.uint8)).save(sys.argv[4])" "$SRC/$1" "$SRC/$2" "$SRC/$3" "$SRC/.flat/$4.png"
+}
 bake_slot() {
   v=$1; shape=$2; key=$3; sw=$4; shift 4
   d="$NEW/trade-$v/slot-new/$shape"
   [ -f "$SRC/$d/no product.png" ] || { echo "  - $d/no product.png 없음 — $v-slot-$key 는 빈 박스"; return 0; }
-  SWATCH=$sw
-  flat "$d/no product.png" "$v-slot-$key"
-  bake $v-slot-$key "$d/thumbnail.png" ".flat/$v-slot-$key.png" "$@"
-  if [ -f "$SRC/$d/no product-eco.png" ]; then
-    flat "$d/no product-eco.png" "$v-slot-$key-eco"
-    bake $v-slot-$key-eco "$d/thumbnail.png" ".flat/$v-slot-$key-eco.png" "$@"
+  std="$BGDIR/standard.png"; [ -f "$SRC/$std" ] || std=""
+  # 팔레트 타일 — Standard 배경이 있으면 썸네일 바탕도 그 배경으로 (모든 컬러 칸이 같은 타일을 쓴다)
+  slot_tile="$d/thumbnail.png"
+  if [ -n "$std" ]; then rebg_thumb "$slot_tile" "$d/no product.png" "$std" "$v-slot-$key-thumb"; slot_tile=".flat/$v-slot-$key-thumb.png"; fi
+  # 컬러 칸 — 배경 컷이 있으면 배경(왼쪽 가운데), 없으면 아이콘 면
+  if [ -n "$std" ]; then SWATCH="200 1350 300"; else SWATCH=$sw; fi
+  # (bake 가 tile · stage 라는 이름을 쓰므로 여기선 다른 이름을 쓴다)
+  # 무대 = 칸 없는 컷 (no box.png — PSD 에서 slot 레이어만 빼고 합성) — 칸은 빌더가 Box 탭 설정대로 그린다. 없으면 칸이 구워진 no product.png
+  nobox="$d/no box.png"; [ -f "$SRC/$nobox" ] || nobox="$d/no product.png"
+  nobox_eco="$d/no box-eco.png"; [ -f "$SRC/$nobox_eco" ] || nobox_eco="$d/no product-eco.png"
+  flat "$nobox" "$v-slot-$key" ${std:+"$std"}
+  # 칸 위에 다시 얹는 아이콘 — 칸 없는 컷에서 아이콘 자리(1160,950 에서 720×850, 여덟 컷 모두 이 안)만 잘라 둔다 (builder-app SLOT_ICON_CROP)
+  mkdir -p "$OUT/slot-icon-stage"
+  sips -c 850 720 --cropOffset 950 1160 "$SRC/$nobox" --out "$OUT/slot-icon-stage/$v-$key-clear.png" >/dev/null
+  [ -f "$SRC/$nobox_eco" ] && sips -c 850 720 --cropOffset 950 1160 "$SRC/$nobox_eco" --out "$OUT/slot-icon-stage/$v-$key-wood.png" >/dev/null
+  bake $v-slot-$key "$slot_tile" ".flat/$v-slot-$key.png" "$@"
+  if [ -f "$SRC/$nobox_eco" ]; then
+    eco="$BGDIR/eco.png"; [ -f "$SRC/$eco" ] || eco=$std
+    [ -f "$SRC/$BGDIR/eco.png" ] && SWATCH="200 1350 300"
+    flat "$nobox_eco" "$v-slot-$key-eco" ${eco:+"$eco"}
+    bake $v-slot-$key-eco "$slot_tile" ".flat/$v-slot-$key-eco.png" "$@"
   fi
   SWATCH="200 1350 300"
   for c in 01 02 03 04 05; do
     [ -f "$SRC/$BGDIR/color-$c.png" ] || continue
-    flat "$d/no product.png" "$v-slot-$key-color-$c" "$BGDIR/color-$c.png"
-    bake $v-slot-$key-color-$c "$d/thumbnail.png" ".flat/$v-slot-$key-color-$c.png" "$@"
+    flat "$nobox" "$v-slot-$key-color-$c" "$BGDIR/color-$c.png"
+    bake $v-slot-$key-color-$c "$slot_tile" ".flat/$v-slot-$key-color-$c.png" "$@"
   done
   SWATCH=""
   return 0
 }
-rm -rf "$SRC/.flat" "$OUT/slot-bg"
+rm -rf "$SRC/.flat" "$OUT/slot-bg" "$OUT/slot-icon-stage"
 mkdir -p "$OUT/slot-bg"
-for c in 01 02 03 04 05; do
-  [ -f "$SRC/$BGDIR/color-$c.png" ] && sips -s format jpeg -s formatOptions 90 -Z 1500 "$SRC/$BGDIR/color-$c.png" --out "$OUT/slot-bg/color-$c.jpg" >/dev/null
+for c in standard color-01 color-02 color-03 color-04 color-05 eco; do
+  [ -f "$SRC/$BGDIR/$c.png" ] && sips -s format jpeg -s formatOptions 90 -Z 1500 "$SRC/$BGDIR/$c.png" --out "$OUT/slot-bg/$c.jpg" >/dev/null
 done
 for v in in up; do
   bake_slot $v 세로형 v "1230 1380 100" 66 46 50 46 28
