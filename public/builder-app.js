@@ -107,6 +107,7 @@ const VERSIONS = [
 
 /** manifest.json — 구워 둔 에셋 id → 원본 크기. 없으면 그 박스는 빈 박스. */
 let manifest = new Map();
+let exporting = false; // 사이즈 묶음을 만드는 중 — 다운로드 버튼에 n / 전체 를 보인다
 
 /** 줄마다 고르는 톤 — Light 가 기본. Dark 에셋 id 는 끝에 -dark (build-assets.sh 와 맞춘다). */
 const TONES = [
@@ -586,9 +587,7 @@ function renderSlots() {
       box.dataset.keys = '';
       return;
     }
-    const slots = state.channel === 'all'
-      ? Object.keys(CHANNEL_KEYS).flatMap(k => heroFirst(slotsForChannel(k, board)))
-      : heroFirst(slotsForChannel(state.channel, board));
+    const slots = channelSlots(board);
     if (!slots.length) {
       box.innerHTML = '<p class="tb-slots-empty">Sizes for this channel are coming soon.</p>';
       box.dataset.keys = '';
@@ -612,20 +611,31 @@ function renderSlots() {
         </figure>${sl.key === HERO_MO ? '<div class="tb-slots-break"></div>' : ''}`;
       }).join('');
     }
-    const pslot = board === 'pslot';
-    const comp = !pslot && state.bg?.assetId === state.selectedId ? $('#comp') : null;
-    const fadeColor = comp ? fadeColorFor(comp) : null;
-    // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
-    const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version), box: boxLook() } : {};
+    const { comp, opts } = slotDrawArgs(hit, board);
     const canvases = box.querySelectorAll('canvas[data-slot]');
     slots.forEach((sl, i) => {
       const c = canvases[i];
       if (!c) return;
       const ctx = c.getContext('2d');
       ctx.setTransform(c.width / sl.w, 0, 0, c.height / sl.h, 0, 0);
-      drawSlot(ctx, sl, comp, state.copy, { fadeColor, artVersion, ...pslotOpts });
+      drawSlot(ctx, sl, comp, state.copy, opts);
     });
   });
+}
+/** 지금 고른 매체의 사이즈 목록 — ALL 은 매체 순서대로 이어 붙인다 (미리보기·ZIP 이 같은 순서) */
+function channelSlots(board) {
+  return state.channel === 'all'
+    ? Object.keys(CHANNEL_KEYS).flatMap(k => heroFirst(slotsForChannel(k, board)))
+    : heroFirst(slotsForChannel(state.channel, board));
+}
+/** drawSlot 에 넘길 완성 컷과 옵션 — 미리보기와 다운로드가 똑같이 그리도록 한 곳에서 */
+function slotDrawArgs(hit, board) {
+  const pslot = board === 'pslot';
+  const comp = !pslot && state.bg?.assetId === state.selectedId ? $('#comp') : null;
+  const fadeColor = comp ? fadeColorFor(comp) : null;
+  // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
+  const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version), box: boxLook() } : {};
+  return { comp, opts: { fadeColor, artVersion, ...pslotOpts } };
 }
 // 글꼴·로고가 늦게 읽히면 한 번 더
 Promise.all([document.fonts.load('600 20px "LGEI Headline"'), document.fonts.load('400 20px "LGEI Text"'), logosReady()]).then(() => renderSlots());
@@ -961,7 +971,9 @@ const productEls = [];
 
 function update() {
   renderSteps();
-  $('#download').disabled = !state.bg || state.bg.assetId !== state.selectedId;
+  $('#download').disabled = exporting || !state.bg || state.bg.assetId !== state.selectedId;
+  // 3 단계에서 매체를 고르면 사이즈 묶음(ZIP), 아니면 원본 한 장(PNG) — 받는 중에는 몇 장째인지 (크리스마스·블프 빌더와 같다)
+  if (!exporting) $('#downloadLabel').textContent = zipReady() ? 'Download ZIP' : 'Download PNG';
   syncHandles();
   syncProductList();
   syncFxPanel();
@@ -1844,7 +1856,8 @@ canvasEl.addEventListener('click', e => {
   if (!btn) return;
   state.channel = state.channel === btn.dataset.channel ? null : btn.dataset.channel;
   canvasEl.querySelectorAll('[data-channel]').forEach(b => b.classList.toggle('on', b.dataset.channel === state.channel));
-  // 고르든 풀든 3 단계 — Edit panel 이 Copy 패널 ↔ 편집 박스로 바뀐다
+  // 풀면 2 단계(Image Edit)로 — Background Color · Box 가 있는 편집 화면. 고르면 3 단계 Copy 패널
+  if (!state.channel) { goStep(1); return; }
   state.step = 2;
   renderSteps();
   renderEdit();
@@ -2080,7 +2093,74 @@ document.addEventListener('keydown', e => {
 
 // ── 다운로드 — 정사각 전체를 원본 해상도로 ───────────────────
 
-$('#download').addEventListener('click', () => {
+/** ZIP 으로 받을 수 있는지 — 3 단계 · 매체 고름 · 이 비주얼에 사이즈가 있을 때 */
+function zipReady() {
+  const hit = findAsset(state.selectedId);
+  const board = hit && boardOf(hit);
+  return !!(state.step >= 2 && state.channel && window.JSZip && board != null && channelSlots(board).length);
+}
+
+/** 저장 — 브라우저 기본 다운로드. 저장 위치를 고르는 동안에도 받을 수 있게 주소는 60 초 뒤에 거둔다 (크리스마스 빌더와 같다) */
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/** 다운로드용 원래 크기 사본 — slot-icon · slot-bg 의 -hi 폴더 (build-assets.sh). 못 읽으면 미리보기용 그대로 */
+function hiRes(img) {
+  if (!img) return Promise.resolve(img);
+  const src = img.src.replace(/\/(slot-icon|slot-bg)\//, '/$1-hi/');
+  return new Promise(r => {
+    const hi = new Image();
+    hi.onload = () => r(hi);
+    hi.onerror = () => r(img);
+    hi.src = src;
+  });
+}
+
+/**
+ * 고른 매체의 사이즈 전부를 원래 픽셀로 그려 zip 하나로 (ALL 은 매체별 폴더) — 미리보기와 같은 그림.
+ * LG.com 은 이미지 업로드 가이드대로 카피·CTA 없이 — 아이콘(히어로 두 장)·디스클레이머(있는 사이즈 전부)는 남긴다
+ */
+async function downloadSlots() {
+  const hit = findAsset(state.selectedId);
+  const board = boardOf(hit);
+  const { comp, opts } = slotDrawArgs(hit, board);
+  if (board === 'pslot') [opts.icon, opts.bgImg] = await Promise.all([hiRes(opts.icon), hiRes(opts.bgImg)]);
+  const slots = channelSlots(board);
+  const zip = new JSZip();
+  const btn = $('#download');
+  const label = $('#downloadLabel');
+  exporting = true;
+  btn.disabled = true;
+  label.textContent = `0 / ${slots.length}`;
+  try {
+    for (const [i, sl] of slots.entries()) {
+      const c = document.createElement('canvas');
+      c.width = sl.w;
+      c.height = sl.h;
+      drawSlot(c.getContext('2d'), sl, comp, state.copy, { ...opts, imageOnly: sl.label === 'LG.com' });
+      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+      (state.channel === 'all' ? zip.folder(sl.label) : zip).file(`${sl.key}.png`, blob);
+      label.textContent = `${i + 1} / ${slots.length}`;
+    }
+    saveBlob(await zip.generateAsync({ type: 'blob' }), `trade-in-up-${state.selectedId}-${state.channel}.zip`);
+  } finally {
+    exporting = false;
+    btn.disabled = false;
+    update();
+  }
+}
+
+$('#download').addEventListener('click', async () => {
+  if (exporting) return;
+  if (zipReady()) { void downloadSlots(); return; }
   const comp = $('#comp');
   if (!comp || !state.bg) return;
   // 화면용 캔버스를 그대로 쓰면 지우개 표시 등과 섞일 일이 없도록 새로 그린다
@@ -2088,14 +2168,8 @@ $('#download').addEventListener('click', () => {
   out.width = state.bg.w;
   out.height = state.bg.h;
   paint(out.getContext('2d'));
-  out.toBlob(blob => {
-    if (!blob) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `trade-in-up-${state.selectedId}.png`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }, 'image/png');
+  const blob = await new Promise(r => out.toBlob(r, 'image/png'));
+  if (blob) saveBlob(blob, `trade-in-up-${state.selectedId}.png`);
 });
 
 /**

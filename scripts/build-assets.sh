@@ -228,10 +228,17 @@ bake_slot() {
   SWATCH=""
   return 0
 }
-rm -rf "$SRC/.flat" "$OUT/slot-bg" "$OUT/slot-icon-stage"
-mkdir -p "$OUT/slot-bg"
+rm -rf "$SRC/.flat" "$OUT/slot-bg" "$OUT/slot-bg-hi" "$OUT/slot-icon-hi" "$OUT/slot-icon-stage"
+mkdir -p "$OUT/slot-bg" "$OUT/slot-bg-hi" "$OUT/slot-icon-hi"
+# slot-bg-hi · slot-icon-hi: ZIP 다운로드용 원래 크기 (큰 매체 사이즈에서 미리보기용 1500 · 1200 을 늘리면 흐려진다)
 for c in standard color-01 color-02 color-03 color-04 color-05 eco; do
-  [ -f "$SRC/$BGDIR/$c.png" ] && sips -s format jpeg -s formatOptions 90 -Z 1500 "$SRC/$BGDIR/$c.png" --out "$OUT/slot-bg/$c.jpg" >/dev/null
+  [ -f "$SRC/$BGDIR/$c.png" ] || continue
+  sips -s format jpeg -s formatOptions 90 -Z 1500 "$SRC/$BGDIR/$c.png" --out "$OUT/slot-bg/$c.jpg" >/dev/null
+  sips -s format jpeg -s formatOptions 92 "$SRC/$BGDIR/$c.png" --out "$OUT/slot-bg-hi/$c.jpg" >/dev/null
+done
+for v in in up; do
+  cp "$SRC/$NEW/$v icon-fixed.png" "$OUT/slot-icon-hi/$v-clear.png"
+  cp "$SRC/$NEW/$v icon-eco.png" "$OUT/slot-icon-hi/$v-wood.png"
 done
 for v in in up; do
   bake_slot $v 세로형 v "1230 1380 100" 66 46 50 46 28
