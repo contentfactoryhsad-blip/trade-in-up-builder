@@ -191,6 +191,22 @@ const versionLabel = v => VERSIONS.find(x => x.key === v)?.label ?? '';
  */
 const UPLOAD_ID = 'upload';
 const UPLOAD_GROUP = { key: 'upload', label: 'Upload Image' };
+/** 이미지 가장자리 평균 색 (#RRGGBB) — 블프 sampleEdgeColor 와 같다 (64px 로 줄여 네 변 픽셀 평균). 매체 사이즈의 판 바탕색 */
+function sampleEdgeColor(img) {
+  try {
+    const N = 64, c = document.createElement('canvas');
+    c.width = c.height = N;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0, N, N);
+    const d = g.getImageData(0, 0, N, N).data;
+    let r = 0, gr = 0, b = 0, n = 0;
+    const px = (x, y) => { const i = (y * N + x) * 4; r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++; };
+    for (let i = 0; i < N; i++) { px(i, 0); px(i, N - 1); px(0, i); px(N - 1, i); }
+    return '#' + [r, gr, b].map(v => Math.round(v / n).toString(16).padStart(2, '0')).join('').toUpperCase();
+  } catch { return '#000000'; }
+}
+/** 밝은 바탕인가 — 밝으면 글자를 어둡게 (블프 isLightHex 와 같은 기준) */
+const isLightHex = hex => 0.2126 * parseInt(hex.slice(1, 3), 16) + 0.7152 * parseInt(hex.slice(3, 5), 16) + 0.0722 * parseInt(hex.slice(5, 7), 16) > 150;
 const isUpload = () => state.selectedId === UPLOAD_ID;
 const uploadAsset = () => state.upload && {
   id: UPLOAD_ID, base: UPLOAD_ID, version: state.version, label: 'Uploaded image', upload: true,
@@ -267,9 +283,9 @@ const state = {
   channel: null, // 3 단계에서 고른 매체 key
   copy: newCopyState(), // 매체를 고르면 Edit panel 에 뜨는 Copy 값 (lib/channelCopy.js) — 매체를 바꿔도 이어진다
   // 글자 모드는 판 종류마다 따로 — Main Key Visual 은 Light(흰 글자), Product Slot 은 밝은 배경이라 Dark(검은 글자)가 기본. copy.textMode 는 지금 판 종류 값을 옮겨 둔 것
-  textModes: { kv: 'light', pslot: 'dark' },
+  textModes: { kv: 'light', pslot: 'dark', upload: 'light' },
   // 로고도 판 종류마다 — Figma Main Key Visual 보드는 white, Product Slot 01 · 02 보드는 color(= LG OG) 로고
-  logoIds: { kv: 'white', pslot: 'og' },
+  logoIds: { kv: 'white', pslot: 'og', upload: 'white' },
   open: new Set(['product']), // Product & Shadow 는 늘 펼쳐 둔다 (EDIT_SECTIONS fixed)
   // Product Slot 칸 투명도 — Background Color 아래 Box 슬라이더. null = 기본 80%
   box: { opacity: null },
@@ -344,8 +360,7 @@ function productRect(slot) {
 function previewWindow() {
   const { w, h } = state.bg;
   const asset = findAsset(state.selectedId)?.asset;
-  // 올린 이미지는 정사각 전체를 박스 가운데에 (양옆은 비운다) — 자르지 않는다
-  if (asset?.upload) { const cw = h * PREVIEW_RATIO; return { x: (w - cw) / 2, y: 0, w: cw, h }; }
+  // 올린 이미지도 에셋처럼 가운데를 줌해서 보인다 — 3000² 전체는 오른쪽 Edit panel 에서 본다
   const ch = h / (asset?.previewZoom ?? PREVIEW_ZOOM);
   const cw = Math.min(w, ch * PREVIEW_RATIO);
   const cy = asset?.previewCy ?? 0.5;
@@ -496,7 +511,12 @@ function handleUploadFile(file) {
         window.alert('Please upload a square image (3000×3000).');
         return;
       }
-      state.upload = { src, w: img.naturalWidth, h: img.naturalHeight };
+      const ground = sampleEdgeColor(img);
+      state.upload = { src, w: img.naturalWidth, h: img.naturalHeight, ground };
+      // 글자·로고 기본은 바탕 밝기에 맞춘다 (블프와 같다 — 밝으면 어두운 글자 · 검은 로고). Copy 패널에서 바꿀 수 있다
+      const light = isLightHex(ground);
+      state.textModes.upload = light ? 'dark' : 'light';
+      state.logoIds.upload = light ? 'black' : 'white';
       // 같은 자리(upload)에 새 그림 — 이전 합성 바탕은 버리고 다시 읽는다
       if (state.bg?.assetId === UPLOAD_ID) state.bg = null;
       state.noIcon = false;
@@ -526,9 +546,9 @@ function renderCanvas() {
   // 합성 바탕이 뜨기 전까지는 구워 둔 미리보기 이미지가 자리를 지킨다
   $('#canvas').innerHTML = `
     <div class="tb-preview">
-      <div class="tb-preview-art${asset.upload ? ' tb-upload-art' : ''}">
+      <div class="tb-preview-art">
         ${asset.art
-          ? `<img src="${asset.src || previewUrl(asset)}" alt="${esc(asset.label)}" draggable="false" />
+          ? `${asset.upload ? '' : `<img src="${previewUrl(asset)}" alt="${esc(asset.label)}" draggable="false" />`}
              <div class="tb-scene" id="scene" hidden>
                <canvas id="comp"></canvas>
                <div class="overlay" id="overlay">
@@ -589,7 +609,8 @@ const SLOT_ASSETS = new Map([['b1-01-01', ''], ['b1-01-02', ''], ['b1-02-01', 't
 // 올린 이미지(upload)는 Wide 보드 (기본 SLOT_DATA) — 내장 KV 처럼 3000² 완성 컷 자리에 얹는다
 const boardOf = hit => hit.group.key === 'slot' ? 'pslot' : hit.asset.upload ? '' : SLOT_ASSETS.get(hit.asset.base);
 /** 지금 판 종류의 글자 모드를 copy 에 옮긴다 — Copy 패널·매체 미리보기를 그리기 전에 */
-const textKind = () => findAsset(state.selectedId)?.group.key === 'slot' ? 'pslot' : 'kv';
+// 올린 이미지는 제 몫(upload) — 기본값은 올릴 때 바탕 밝기로 정한다
+const textKind = () => { const k = findAsset(state.selectedId)?.group.key; return k === 'slot' ? 'pslot' : k === 'upload' ? 'upload' : 'kv'; };
 const syncTextMode = () => { const k = textKind(); state.copy.textMode = state.textModes[k]; state.copy.logoId = state.logoIds[k]; };
 // Product Slot 판 아이콘 — 버전 × (Background Color 07 Eco 면 나무, 아니면 클리어). 처음 읽히면 다시 그린다
 const slotIcons = new Map();
@@ -638,8 +659,7 @@ function fadeColorFor(comp) {
   const sum = [0, 0, 0];
   for (let i = 0; i < d.length; i += 4) { sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2]; }
   const n = d.length / 4;
-  // 올린 이미지는 기본 컷이 아니다 — 그 벽 색에서 FADE_DEPTH 만큼만 어둡게
-  const base = !isUpload() && state.bgColor === 'c1' && toneOf('basic-01') === 'light';
+  const base = state.bgColor === 'c1' && toneOf('basic-01') === 'light';
   const k = base ? 1 : FADE_DEPTH;
   return '#' + sum.map((v, i) => Math.round((v / n) * (1 - k * (1 - FADE_RATIO[i]))).toString(16).padStart(2, '0')).join('');
 }
@@ -708,6 +728,8 @@ function channelSlots(board) {
 function slotDrawArgs(hit, board) {
   const pslot = board === 'pslot';
   const comp = !pslot && state.bg?.assetId === state.selectedId ? $('#comp') : null;
+  // 올린 이미지 — 판 바탕은 가장자리 색, 빈 곳은 거울 늘이기, KV 그라데이션 없음, Dark 글자는 #111 (블프 custom upload 와 같다)
+  if (hit.asset.upload) return { comp, opts: { artVersion, ground: state.upload.ground, darkInk: '#111111' } };
   const fadeColor = comp ? fadeColorFor(comp) : null;
   // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
   const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version), box: boxLook() } : {};

@@ -140,6 +140,37 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
 }
 
 /**
+ * 올린 이미지(UPLOAD IMAGE) 전용 — 블프 빌더 MirrorFill 과 같다 (배너 자동화 플러그인 "Color Expand").
+ * 컷이 못 덮는 곳은 컷 가장자리 띠(한 변의 1% — 3000 이면 30px)를 바깥으로 뒤집어 늘려 채운다 (모서리는 두 방향으로 뒤집는다).
+ * 뒤집어야 맞닿는 줄이 컷 가장자리 그 픽셀이라 이음매가 안 보인다. 1px 줄을 늘리는 drawArtFilled 는 사진에서 줄무늬로 번져서 쓰지 않는다
+ */
+const MIRROR_INSET = 0.01;
+function drawArtMirrored(ctx, art, [ax, ay, as], W, H) {
+  const nw = art.naturalWidth || art.width, nh = art.naturalHeight || art.height;
+  const gapT = Math.max(0, ay), gapB = Math.max(0, H - (ay + as)), gapL = Math.max(0, ax), gapR = Math.max(0, W - (ax + as));
+  const fx = Math.max(1, Math.round(nw * MIRROR_INSET)), fy = Math.max(1, Math.round(nh * MIRROR_INSET));
+  const OV = 2; // 컷 밑으로 2px 겹쳐 그린다 — 반 픽셀 차이로 바탕색 줄이 비치지 않게
+  const x1 = ax + as - OV, y1 = ay + as - OV;
+  const draw = (sx, sy, sw, sh, dx, dy, dw, dh, flipX, flipY) => {
+    ctx.save();
+    ctx.translate(dx + (flipX ? dw : 0), dy + (flipY ? dh : 0));
+    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+    ctx.drawImage(art, sx, sy, sw, sh, 0, 0, dw, dh);
+    ctx.restore();
+  };
+  ctx.imageSmoothingQuality = 'high';
+  if (gapT > 0) draw(0, 0, nw, fy, ax, 0, as, gapT + OV, false, true);
+  if (gapB > 0) draw(0, nh - fy, nw, fy, ax, y1, as, gapB + OV, false, true);
+  if (gapL > 0) draw(0, 0, fx, nh, 0, ay, gapL + OV, as, true, false);
+  if (gapR > 0) draw(nw - fx, 0, fx, nh, x1, ay, gapR + OV, as, true, false);
+  if (gapT > 0 && gapL > 0) draw(0, 0, fx, fy, 0, 0, gapL + OV, gapT + OV, true, true);
+  if (gapT > 0 && gapR > 0) draw(nw - fx, 0, fx, fy, x1, 0, gapR + OV, gapT + OV, true, true);
+  if (gapB > 0 && gapL > 0) draw(0, nh - fy, fx, fy, 0, y1, gapL + OV, gapB + OV, true, true);
+  if (gapB > 0 && gapR > 0) draw(nw - fx, nh - fy, fx, fy, x1, y1, gapR + OV, gapB + OV, true, true);
+  ctx.drawImage(art, ax, ay, as, as);
+}
+
+/**
  * Product Slot 판 — 배경 컬러를 깔고, 칸(흰 둥근 사각형, 불투명도 SLOT_ALPHA)과 칸 안 제품, 그 위에 아이콘을 Figma 자리대로 그린다 (칸은 아이콘 아래 레이어).
  *   slot.icon  : 아이콘 컴포넌트 인스턴스 [x, y, 한 변] — 컴포넌트 2000² 안에서 아이콘 그림(opts.icon)이 놓이는 자리가 PSLOT_ICON
  *   slot.boxes : [x, y, 한 변, 모서리] — 제품은 칸 짧은 변의 BOX_PAD 만큼 사방을 비우고 비율대로 가운데 (빌더 캔버스와 같다)
@@ -292,6 +323,8 @@ export const logosReady = () => Promise.all(Object.keys(LOGOS).map(id => {
  * opts.imageOnly: LG.com 다운로드용 — 카피·CTA 없이 (이미지 업로드 가이드: 아이콘·디스클레이머만 남긴다)
  * opts.fadeColor: 그라데이션 색 (#rrggbb) — 없으면 Figma 색 그대로, opts.artVersion: 컷이 바뀌면 올린다 (가장자리 사본을 다시 만든다)
  * opts.icon · products · bg: Product Slot 판 (drawProductSlot)
+ * opts.ground: 올린 이미지 — 판 바탕을 이 색(이미지 가장자리 평균)으로 깔고, 빈 곳은 거울 늘이기(drawArtMirrored), KV 용 그라데이션(fades)은 뺀다 (블프와 같다)
+ * opts.darkInk: Dark 글자 모드 글자색 (없으면 #000) — 올린 이미지는 블프처럼 #111
  */
 export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (slot.noCopy) slot = { ...slot, logo: null, rows: [], cta: null, disc: null };
@@ -299,17 +332,18 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   const show = cs.show;
   const val = k => (cs.copy[k] ?? '').trim() || PLACEHOLDER[k];
   // 글자 모드 — Light 는 흰 글자, Dark 는 검은 글자 (카피·동그란 CTA·Disclaimer)
-  const ink = cs.textMode === 'dark' ? '#000' : '#fff';
+  const ink = cs.textMode === 'dark' ? (opts.darkInk || '#000') : '#fff';
   ctx.save();
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = opts.ground || '#000000';
   ctx.fillRect(0, 0, W, H);
   if (slot.boxes) drawProductSlot(ctx, slot, opts);
+  else if (art && slot.art && opts.ground) drawArtMirrored(ctx, art, slot.art, W, H);
   else if (art && slot.art) drawArtFilled(ctx, art, slot.art, W, H, opts.artVersion);
   // Figma 기본 그라데이션 색 — 기본 컷(Standard Light)일 때 opts.fadeColor 도 이 색이 된다
   const hex = opts.fadeColor || '#9c9185';
   const alpha = a => `${hex}${Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0')}`;
-  for (const f of slot.fades || []) {
+  for (const f of opts.ground ? [] : slot.fades || []) {
     ctx.save();
     ctx.transform(...f.m);
     const g = ctx.createLinearGradient(0, 0, 1, 0);
