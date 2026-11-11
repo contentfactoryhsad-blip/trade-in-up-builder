@@ -484,3 +484,40 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-box-opacity .val { margin-left: auto; font-size: 11px; color: var(--gray-400); font-variant-numeric: tabular-nums; }
 .tb-box-opacity .link { font-size: 11px; }
 .tb-box input[data-box-opacity] { width: 100%; accent-color: var(--brand); }
+
+/* UPLOAD IMAGE — 팔레트 맨 아래 (블프 빌더와 같은 모양). 상자는 팔레트 타일과 같은 140 × 76 */
+.tb-upload { gap: 4px; }
+.tb-upload-sub { margin: -2px 0 2px; padding: 0 4px; font-size: 11px; color: var(--gray-400); }
+/* 안내 카드가 줄 기준으로 뜨게 relative — 팔레트는 가로 넘침을 자른다 */
+.tb-upload-row { position: relative; display: flex; align-items: center; gap: 12px; }
+.tb-upload-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0;
+  width: 140px; height: 76px; padding: 0; border-radius: 4px;
+  border: 1px dashed var(--gray-300); background: none; color: var(--gray-400);
+  transition: border-color .15s, color .15s;
+}
+.tb-upload-box:hover { border-color: var(--brand); color: var(--brand); }
+.tb-upload-box span { font-size: 10px; line-height: 1; }
+.tb-upload-done { display: flex; flex-direction: column; gap: 4px; width: 140px; flex-shrink: 0; }
+.tb-upload-thumb { background: #111; }
+.tb-upload-replace { align-self: flex-start; padding: 0 4px; border: 0; background: none; font-size: 11px; color: var(--gray-400); }
+.tb-upload-replace:hover { color: var(--gray-700); }
+.tb-upload-help { display: flex; align-items: center; gap: 6px; cursor: help; user-select: none; }
+.tb-upload-mark {
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--gray-400);
+  font-size: 15px; font-weight: 700; line-height: 1; color: var(--gray-400);
+}
+.tb-upload-guide { font-size: 11px; color: var(--gray-500); }
+/* 제목 한 줄이 카드 폭 — 설명은 그 폭에 맞춰 줄바꿈 */
+.tb-upload-card {
+  display: none; position: absolute; left: 0; bottom: 100%; margin-bottom: 8px; z-index: 50; width: max-content;
+  padding: 12px; border: 1px solid var(--gray-200); border-radius: 12px; background: #fff;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1);
+}
+.tb-upload-help:hover .tb-upload-card { display: block; }
+.tb-upload-card-title { margin: 0 0 2px; font-size: 11px; font-weight: 600; color: var(--gray-900); white-space: nowrap; }
+.tb-upload-card-text { margin: 0; width: 0; min-width: 100%; font-size: 11px; line-height: 1.375; color: var(--gray-600); }
+/* 캔버스 미리보기 — 올린 정사각은 자르지 않고 가운데에 */
+.tb-preview-art.tb-upload-art { background: var(--gray-100); }
+.tb-preview-art.tb-upload-art > img { object-fit: contain; }

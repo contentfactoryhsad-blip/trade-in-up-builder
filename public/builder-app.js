@@ -184,8 +184,22 @@ const STEP_HINTS = ['Pick an image on the left.', 'Edit the product and backgrou
 
 const versionLabel = v => VERSIONS.find(x => x.key === v)?.label ?? '';
 
+/**
+ * UPLOAD IMAGE — 사용자가 올린 완성 정사각(3000×3000) 한 장 (블프 빌더 custom asset 과 같다).
+ * 팔레트 맨 아래에서 고르는 에셋 하나로 다룬다: 제품 합성·제품 칸·지우개 없이 그림 그대로가 #comp 가 되고,
+ * 매체 사이즈는 Wide 보드(SLOT_DATA)에 내장 KV 처럼 얹는다. state.upload = { src(dataURL), w, h }
+ */
+const UPLOAD_ID = 'upload';
+const UPLOAD_GROUP = { key: 'upload', label: 'Upload Image' };
+const isUpload = () => state.selectedId === UPLOAD_ID;
+const uploadAsset = () => state.upload && {
+  id: UPLOAD_ID, base: UPLOAD_ID, version: state.version, label: 'Uploaded image', upload: true,
+  art: true, src: state.upload.src, size: [state.upload.w, state.upload.h],
+};
+
 const findAsset = id => {
   if (!id) return null;
+  if (id === UPLOAD_ID) return state.upload ? { asset: uploadAsset(), group: UPLOAD_GROUP } : null;
   for (const g of groupsFor(id.split('-')[0])) {
     // 팔레트 칸 id(썸네일 id)로도 찾는다 — Dark 칸은 Standard 컷이 없어 칸 id 와 에셋 id 가 다르다
     const a = g.assets.find(x => x.id === id) || g.assets.find(x => x.thumbId === id);
@@ -248,6 +262,7 @@ const state = {
   bgColor: 'c1', // 고른 Background Color 칸 key — 01 Standard 가 기본
   noIcon: false, // Standard — 아이콘 없는 컷 (-ni) 으로 본다. 에셋을 새로 고르면 꺼진다
   selectedId: null,
+  upload: null, // UPLOAD IMAGE — 올린 완성 이미지 { src, w, h } (없으면 null)
   step: 0, // 상단 스텝 (0 부터) — 에셋을 고르면 1, 미리보기 아래 OK 를 누르면 2
   channel: null, // 3 단계에서 고른 매체 key
   copy: newCopyState(), // 매체를 고르면 Edit panel 에 뜨는 Copy 값 (lib/channelCopy.js) — 매체를 바꿔도 이어진다
@@ -329,6 +344,8 @@ function productRect(slot) {
 function previewWindow() {
   const { w, h } = state.bg;
   const asset = findAsset(state.selectedId)?.asset;
+  // 올린 이미지는 정사각 전체를 박스 가운데에 (양옆은 비운다) — 자르지 않는다
+  if (asset?.upload) { const cw = h * PREVIEW_RATIO; return { x: (w - cw) / 2, y: 0, w: cw, h }; }
   const ch = h / (asset?.previewZoom ?? PREVIEW_ZOOM);
   const cw = Math.min(w, ch * PREVIEW_RATIO);
   const cy = asset?.previewCy ?? 0.5;
@@ -432,7 +449,64 @@ function renderPalette() {
       <div class="tb-grid">${g.tones ? TONES.map(t => list.map(a => cellOf(g, a, t)).join('')).join('') : list.map(a => cellOf(g, a)).join('')}
       </div>${notes.map(n => `
       <p class="tb-grid-note">${esc(n)}</p>`).join('')}
-    </section>`).join('');
+    </section>`).join('') + uploadSection();
+}
+
+/** UPLOAD IMAGE — 팔레트 맨 아래 (블프 빌더와 같은 모양·문구). 올리기 전엔 점선 상자, 올린 뒤엔 썸네일 + Replace */
+function uploadSection() {
+  const u = state.upload;
+  const box = u
+    ? `<div class="tb-upload-done">
+        <button type="button" class="tb-cell tb-upload-cell${isUpload() ? ' selected' : ''}" data-upload-pick>
+          <span class="tb-tile has-art tb-upload-thumb"><img src="${u.src}" alt="Uploaded image" draggable="false" /></span>
+        </button>
+        <button type="button" class="tb-upload-replace" data-upload-open>Replace</button>
+      </div>`
+    : `<button type="button" class="tb-upload-box" data-upload-open>
+        <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 9V1M4 4l3-3 3 3M2 11h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>3000×3000</span>
+      </button>`;
+  return `
+    <section class="tb-group tb-upload">
+      <p class="tb-group-label">UPLOAD IMAGE</p>
+      <p class="tb-upload-sub">Please upload your finished image.</p>
+      <input type="file" accept="image/*" id="uploadInput" hidden />
+      <div class="tb-upload-row">
+        ${box}
+        <div class="tb-upload-help">
+          <span class="tb-upload-mark">!</span>
+          <span class="tb-upload-guide">Creation Guide</span>
+          <div class="tb-upload-card">
+            <p class="tb-upload-card-title">Safe Area (center 1080 × 1080px of 3000 × 3000px)</p>
+            <p class="tb-upload-card-text">Keep the main visual inside the Safe Area so the image is not cropped when varied across sizes.</p>
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
+/** 올린 파일 — dataURL 로 읽고, 정사각이 아니면 (1% 넘게 차이) 받지 않는다 (블프 handleUploadFile 과 같다) */
+function handleUploadFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const src = String(reader.result);
+    const img = new Image();
+    img.onload = () => {
+      if (Math.abs(img.width - img.height) > img.width * 0.01) {
+        window.alert('Please upload a square image (3000×3000).');
+        return;
+      }
+      state.upload = { src, w: img.naturalWidth, h: img.naturalHeight };
+      // 같은 자리(upload)에 새 그림 — 이전 합성 바탕은 버리고 다시 읽는다
+      if (state.bg?.assetId === UPLOAD_ID) state.bg = null;
+      state.noIcon = false;
+      state.step = 1;
+      selectAsset(UPLOAD_ID);
+    };
+    img.onerror = () => window.alert('That file could not be read as an image.');
+    img.src = src;
+  };
+  reader.readAsDataURL(file);
 }
 
 function renderCanvas() {
@@ -452,9 +526,9 @@ function renderCanvas() {
   // 합성 바탕이 뜨기 전까지는 구워 둔 미리보기 이미지가 자리를 지킨다
   $('#canvas').innerHTML = `
     <div class="tb-preview">
-      <div class="tb-preview-art">
+      <div class="tb-preview-art${asset.upload ? ' tb-upload-art' : ''}">
         ${asset.art
-          ? `<img src="${previewUrl(asset)}" alt="${esc(asset.label)}" draggable="false" />
+          ? `<img src="${asset.src || previewUrl(asset)}" alt="${esc(asset.label)}" draggable="false" />
              <div class="tb-scene" id="scene" hidden>
                <canvas id="comp"></canvas>
                <div class="overlay" id="overlay">
@@ -464,7 +538,7 @@ function renderCanvas() {
                  <div id="brushCursor" hidden></div>
                </div>
              </div>
-             ${hasNoIcon(asset.version, group.key, asset.base) ? `
+             ${!asset.upload && hasNoIcon(asset.version, group.key, asset.base) ? `
                <div class="tb-example-toggle" role="group" aria-label="Icon">
                  <button type="button" data-noicon${state.noIcon ? ' class="on"' : ''} aria-pressed="${state.noIcon}">Standard</button>
                </div>` : ''}`
@@ -512,7 +586,8 @@ function channelPicker() {
  */
 // 에셋 → 보드 ('tall' = Main Key Visual 02, '' = 01). Product Slot 줄(group 'slot')은 'pslot' — 세로형·가로형 어느 쪽이든 Product Slot 01 · 02 보드
 const SLOT_ASSETS = new Map([['b1-01-01', ''], ['b1-01-02', ''], ['b1-02-01', 'tall'], ['b1-02-02', 'tall']]);
-const boardOf = hit => hit.group.key === 'slot' ? 'pslot' : SLOT_ASSETS.get(hit.asset.base);
+// 올린 이미지(upload)는 Wide 보드 (기본 SLOT_DATA) — 내장 KV 처럼 3000² 완성 컷 자리에 얹는다
+const boardOf = hit => hit.group.key === 'slot' ? 'pslot' : hit.asset.upload ? '' : SLOT_ASSETS.get(hit.asset.base);
 /** 지금 판 종류의 글자 모드를 copy 에 옮긴다 — Copy 패널·매체 미리보기를 그리기 전에 */
 const textKind = () => findAsset(state.selectedId)?.group.key === 'slot' ? 'pslot' : 'kv';
 const syncTextMode = () => { const k = textKind(); state.copy.textMode = state.textModes[k]; state.copy.logoId = state.logoIds[k]; };
@@ -563,7 +638,8 @@ function fadeColorFor(comp) {
   const sum = [0, 0, 0];
   for (let i = 0; i < d.length; i += 4) { sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2]; }
   const n = d.length / 4;
-  const base = state.bgColor === 'c1' && toneOf('basic-01') === 'light';
+  // 올린 이미지는 기본 컷이 아니다 — 그 벽 색에서 FADE_DEPTH 만큼만 어둡게
+  const base = !isUpload() && state.bgColor === 'c1' && toneOf('basic-01') === 'light';
   const k = base ? 1 : FADE_DEPTH;
   return '#' + sum.map((v, i) => Math.round((v / n) * (1 - k * (1 - FADE_RATIO[i]))).toString(16).padStart(2, '0')).join('');
 }
@@ -669,7 +745,7 @@ function renderEdit() {
     <div class="tb-edit-asset">
       <p class="name">${esc(asset.label)}</p>
       <p class="meta">${esc(versionLabel(asset.version))} · ${esc(group.label)}${asset.size ? ` · ${asset.size[0]} × ${asset.size[1]}` : ''}</p>
-      ${asset.art ? `<div class="tb-edit-frame"><img src="${frameUrl(asset)}" alt="${esc(asset.label)}" draggable="false" /><canvas id="frameView" hidden></canvas>${layoutNav(asset)}</div>` : ''}
+      ${asset.art ? `<div class="tb-edit-frame"><img src="${asset.src || frameUrl(asset)}" alt="${esc(asset.label)}" draggable="false" /><canvas id="frameView" hidden></canvas>${layoutNav(asset)}</div>` : ''}
       ${group.bgColors && state.step === 1 /* Background Color 는 2 단계(Image Edit)에서만 */ ? `
         <div class="tb-bgcolor">
           <p class="tb-acc-item-label">Background Color</p>
@@ -688,7 +764,7 @@ function renderEdit() {
         </div>` : ''}
       ${asset.boxes && state.step === 1 ? `<div class="tb-box" id="boxControl">${boxPanel()}</div>` : ''}
     </div>
-    ${EDIT_SECTIONS.map(sec => `
+    ${asset.upload ? '' /* 올린 이미지는 완성본 — 제품·그림자 편집 없음 */ : EDIT_SECTIONS.map(sec => `
       <section class="tb-acc${state.open.has(sec.key) || sec.fixed ? ' open' : ''}${sec.fixed ? ' fixed' : ''}" data-key="${sec.key}"${sec.hidden ? ' hidden style="display:none"' : ''}>
         <button type="button" class="tb-acc-head" aria-expanded="${state.open.has(sec.key) || !!sec.fixed}"${sec.fixed ? ' tabindex="-1"' : ''}>
           <span class="tb-acc-text">
@@ -891,7 +967,7 @@ function useSlotsFor(asset) {
 async function loadStage(asset) {
   if (state.bg?.assetId === asset.id) return showScene();
   try {
-    const img = await loadImage(stageUrl(asset));
+    const img = await loadImage(asset.src || stageUrl(asset));
     if (state.selectedId !== asset.id) return; // 읽는 사이 다른 에셋을 골랐다
     useStage(asset, img);
     showScene();
@@ -904,6 +980,8 @@ async function loadStage(asset) {
 /** 읽어 온 무대 그림을 합성 바탕으로 삼는다. */
 function useStage(asset, img) {
   const w = img.naturalWidth, h = img.naturalHeight;
+  // 올린 이미지는 그대로 그리기만 한다 — 그늘색 지도·색 보정·오브젝트 감지는 필요 없다 (3000² 를 한 번 덜 읽는다)
+  if (asset.upload) { state.bg = { assetId: asset.id, id: Date.now(), w, h, px: { img, w, h }, scene: null }; state.objects = null; state.objVersion++; return; }
   // 지운 자리는 배경 좌표라 다른 배경에서는 의미가 없다
   if (state.bg) state.slots.forEach(s => { s.eraser = null; });
   const px = createBackground(img);
@@ -1122,6 +1200,8 @@ const NO_SHADOW_FX = (() => { const fx = cloneFx(DEFAULT_FX); fx.surface = 'floo
 const boxMode = () => !!findAsset(state.selectedId)?.asset.boxes;
 
 function paint(ctx) {
+  // 올린 이미지 — 제품·그림자 없이 그림 그대로
+  if (isUpload()) { drawComposite(ctx, state.bg.px, []); return; }
   const inBox = boxMode();
   const items = state.slots
     .map(slot => ({ slot, rect: productRect(slot) }))
@@ -1626,7 +1706,18 @@ $('#palette').addEventListener('click', e => {
     // 고른 박스가 있으면 다른 버전의 같은 자리로 옮겨 간다 — 제품·설정은 그대로
     const cur = findAsset(state.selectedId);
     markOn(vb, 'aria-selected');
+    // 올린 이미지는 버전과 상관없는 한 장 — 그대로 둔 채 이름표(버전)만 바꾼다
+    if (cur?.asset.upload) { state.version = v; selectAsset(UPLOAD_ID); return; }
     void swapTo(() => { state.version = v; }, cur && (() => assetId(v, cur.group.key, cur.asset.base)));
+    return;
+  }
+  // UPLOAD IMAGE — 점선 상자·Replace 는 파일 고르기, 썸네일은 다른 칸처럼 고르기 (다시 누르면 해제)
+  if (e.target.closest('[data-upload-open]')) { $('#uploadInput')?.click(); return; }
+  if (e.target.closest('[data-upload-pick]')) {
+    if (isUpload()) { selectAsset(null); return; }
+    state.noIcon = false;
+    state.step = 1;
+    selectAsset(UPLOAD_ID);
     return;
   }
   const cell = e.target.closest('.tb-cell');
@@ -1642,6 +1733,13 @@ $('#palette').addEventListener('click', e => {
   const hit = findAsset(cell.dataset.id);
   selectAsset(hit ? assetId(hit.asset.version, hit.group.key, hit.asset.base) : cell.dataset.id);
   placeOldProduct(hit?.asset, hit?.group.key);
+});
+
+$('#palette').addEventListener('change', e => {
+  if (e.target.id !== 'uploadInput') return;
+  const f = e.target.files?.[0];
+  e.target.value = '';
+  if (f) handleUploadFile(f);
 });
 
 const editBody = $('#editBody');
