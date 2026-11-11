@@ -360,7 +360,8 @@ function productRect(slot) {
 function previewWindow() {
   const { w, h } = state.bg;
   const asset = findAsset(state.selectedId)?.asset;
-  // 올린 이미지도 에셋처럼 가운데를 줌해서 보인다 — 3000² 전체는 오른쪽 Edit panel 에서 본다
+  // 올린 이미지는 블프 빌더처럼 폭을 꽉 채우고 위아래만 가운데로 자른다 (object-cover) — 3000² 전체는 오른쪽 Edit panel 에서 본다
+  if (asset?.upload) { const ch = w / PREVIEW_RATIO; return { x: 0, y: (h - ch) / 2, w, h: ch }; }
   const ch = h / (asset?.previewZoom ?? PREVIEW_ZOOM);
   const cw = Math.min(w, ch * PREVIEW_RATIO);
   const cy = asset?.previewCy ?? 0.5;
