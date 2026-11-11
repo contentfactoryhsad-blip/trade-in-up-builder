@@ -17,6 +17,7 @@ import { SLOT_DATA } from './channelSlotData.js';
 import { SLOT_DATA_TALL } from './channelSlotDataTall.js';
 import { SLOT_DATA_PSLOT } from './channelSlotDataSlot.js';
 import { ICON_LIST, iconSvg, splitLabel } from './icons.js';
+import { UPLOAD_ART } from './uploadArt.js';
 export { SLOT_DATA };
 
 /*
@@ -338,7 +339,8 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   ctx.fillStyle = opts.ground || '#000000';
   ctx.fillRect(0, 0, W, H);
   if (slot.boxes) drawProductSlot(ctx, slot, opts);
-  else if (art && slot.art && opts.ground) drawArtMirrored(ctx, art, slot.art, W, H);
+  // 올린 이미지는 블프 빌더 판 자리로 (uploadArt.js — Safe Area 가 사이즈마다 거의 다 보인다)
+  else if (art && slot.art && opts.ground) drawArtMirrored(ctx, art, UPLOAD_ART[slot.key] || slot.art, W, H);
   else if (art && slot.art) drawArtFilled(ctx, art, slot.art, W, H, opts.artVersion);
   // Figma 기본 그라데이션 색 — 기본 컷(Standard Light)일 때 opts.fadeColor 도 이 색이 된다
   const hex = opts.fadeColor || '#9c9185';
