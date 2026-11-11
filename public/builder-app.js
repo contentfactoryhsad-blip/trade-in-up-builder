@@ -2133,7 +2133,10 @@ async function downloadSlots() {
   const board = boardOf(hit);
   const { comp, opts } = slotDrawArgs(hit, board);
   if (board === 'pslot') [opts.icon, opts.bgImg] = await Promise.all([hiRes(opts.icon), hiRes(opts.bgImg)]);
-  const slots = channelSlots(board);
+  // META 는 로고 없는 판을 한 장씩 더 담는다 (세일즈 배너 빌더와 같은 규칙 — 파일명 끝 -no-logo)
+  const slots = channelSlots(board).flatMap(sl => sl.label === 'META'
+    ? [{ sl, name: sl.key }, { sl: { ...sl, logo: null }, name: `${sl.key}-no-logo` }]
+    : [{ sl, name: sl.key }]);
   const zip = new JSZip();
   const btn = $('#download');
   const label = $('#downloadLabel');
@@ -2141,13 +2144,13 @@ async function downloadSlots() {
   btn.disabled = true;
   label.textContent = `0 / ${slots.length}`;
   try {
-    for (const [i, sl] of slots.entries()) {
+    for (const [i, { sl, name }] of slots.entries()) {
       const c = document.createElement('canvas');
       c.width = sl.w;
       c.height = sl.h;
       drawSlot(c.getContext('2d'), sl, comp, state.copy, { ...opts, imageOnly: sl.label === 'LG.com' });
       const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-      (state.channel === 'all' ? zip.folder(sl.label) : zip).file(`${sl.key}.png`, blob);
+      (state.channel === 'all' ? zip.folder(sl.label) : zip).file(`${name}.png`, blob);
       label.textContent = `${i + 1} / ${slots.length}`;
     }
     saveBlob(await zip.generateAsync({ type: 'blob' }), `trade-in-up-${state.selectedId}-${state.channel}.zip`);
