@@ -202,18 +202,58 @@ function drawArtMirrored(ctx, art, [ax, ay, as], W, H) {
 /**
  * 칸 한 개 — White 는 흰 사각형, Glass 는 세일즈 배너 빌더 글래스 박스와 같은 비율
  *   (흰 채움 + 흰 15% 테두리 폭 1.573/234.748 · 왼쪽 위 안쪽 하이라이트 흰 30%).
- *   두 재질 모두 그림자와 머리카락 테두리(검정 5%)를 둘러, 배경의 밝은 하이라이트(흰색에 가까운 자리)에 칸이 겹쳐도 윤곽이 남는다.
+ *   투명도 50% 이상은 그림자와 머리카락 테두리(검정 5%)를 둘러 (50%→15% 로 내릴수록 세일즈 글래스처럼 검정 테두리·둘레 그림자가 빠지고 아래 7% 한 겹만), 배경의 밝은 하이라이트(흰색에 가까운 자리)에 칸이 겹쳐도 윤곽이 남는다.
  *   그림자 — 두 재질 모두 둘레 3.5%(안 내림) + 아래 3.5%(6.29/234.748 내려서 같은 만큼 흐림) 두 겹.
  *            위·옆에도 윤곽이 생기고, 아래는 합쳐서 약 7% — 세일즈 배너 빌더 박스 그림자(아래 7%)보다 진해지지 않는다
  *   뒤 흐림은 뺐다 — 배경이 부드러운 그라데이션이라 흐려도 차이가 없다
  */
+/**
+ * 칸 둘레 배경이 얼마나 흰색에 가까운지 (0 = 충분히 구분됨 · 1 = 거의 흰색이라 칸이 묻힘).
+ *   칸 바로 바깥 네 띠(칸 변의 5%)를 읽어 띠마다 평균 밝기를 내고, 가장 밝은 띠로 판단한다 — 한쪽만 하이라이트에 걸려도 그쪽 윤곽이 사라지므로.
+ *   배경과 밝기 차이(1 - 밝기)가 0.10 이상이면 0, 0.04 이하면 1 (스크린샷 기준: 분홍 바탕 0.80~0.87 → 0, 하이라이트 0.96~0.99 → 거의 1). 캔버스를 못 읽으면 0 (기본 그림자 그대로)
+ */
+function boxBlend(ctx, x, y, s) {
+  try {
+    const m = ctx.getTransform(), k = Math.hypot(m.a, m.b);
+    const X = m.a * x + m.c * y + m.e, Y = m.b * x + m.d * y + m.f, S = s * k;
+    const b = Math.max(2, Math.round(S * 0.05)), gap = Math.max(1, Math.round(S * 0.02));
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const strips = [
+      [X, Y - gap - b, S, b], [X, Y + S + gap, S, b],
+      [X - gap - b, Y, b, S], [X + S + gap, Y, b, S],
+    ];
+    let best = -1;
+    for (let [sx, sy, sw, shh] of strips) {
+      sx = Math.round(Math.max(0, sx)); sy = Math.round(Math.max(0, sy));
+      sw = Math.round(Math.min(W - sx, sw)); shh = Math.round(Math.min(H - sy, shh));
+      if (sw < 1 || shh < 1) continue;
+      const d = ctx.getImageData(sx, sy, sw, shh).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 16) { sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; n++; }
+      if (n) best = Math.max(best, sum / n / 255);
+    }
+    if (best < 0) return 0;
+    return Math.min(1, Math.max(0, (0.10 - (1 - best)) / 0.06));
+  } catch { return 0; }
+}
+
 const BOX_EDGE = 'rgba(0,0,0,0.05)';
 export function drawBox(ctx, x, y, s, r, look) {
+  // 배경이 흰색에 가까워 칸이 묻히는 자리만 그림자·테두리를 조금 진하게 (차이가 충분하면 그대로)
+  // 투명도를 내릴수록 세일즈 배너 빌더 글래스 그대로 — 검정 테두리·둘레 그림자를 빼고 아래 7% 한 겹만 (50% 에서 시작해 15% 에서 완전히)
+  const g = Math.min(1, Math.max(0, (0.5 - look.alpha) / 0.35));
+  // 흰 배경 보정도 같이 뺀다 — 글래스는 세일즈 값(아래 7%) 그대로
+  const blend = boxBlend(ctx, x, y, s);
+  const t = blend * (1 - g);
+  // 글래스 흰 라인·하이라이트 — 세일즈 값(15% · 30%)은 진한 바탕 기준이라 흰 바탕에선 안 보인다. 밝은 바탕일수록 진하게 (글래스일 때만)
+  const rimA = 0.15 + 0.5 * blend * g, hiA = 0.3 + 0.6 * blend * g;
+  const px = 1 / (Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1); // 캔버스 1 픽셀 — 작은 사이즈에서도 선이 사라지지 않게
   ctx.save();
   {
     // 그림자 — CSS box-shadow 처럼 칸 바깥에만 (칸 안은 비워 둔다)
-    const sh = s * 6.29 / 234.748;
-    const layers = [[0.035, 0], [0.035, sh]]; // [알파, 아래로 내림]
+    const sh = s * 6.29 / 234.748 * (1 + t * 0.6);
+    const a = 0.035 + t * 0.045;
+    const layers = [[a * (1 - g), 0], [a + (0.07 - 0.035) * g, sh]]; // [알파, 아래로 내림]
     ctx.save();
     ctx.beginPath();
     ctx.rect(x - s, y - s, s * 3, s * 3);
@@ -236,22 +276,24 @@ export function drawBox(ctx, x, y, s, r, look) {
   ctx.fillStyle = `rgba(255,255,255,${look.alpha})`;
   ctx.fill();
   // 머리카락 테두리 — 칸 가장자리에 걸쳐 (밝은 배경에서도 윤곽이 남게)
-  ctx.strokeStyle = BOX_EDGE;
-  ctx.lineWidth = Math.max(0.5, s * 0.9 / 234.748);
-  ctx.stroke();
+  if (g < 1) {
+    ctx.strokeStyle = t || g ? `rgba(0,0,0,${(0.05 + t * 0.05) * (1 - g)})` : BOX_EDGE;
+    ctx.lineWidth = Math.max(0.5, s * 0.9 / 234.748);
+    ctx.stroke();
+  }
   if (look.glass) {
     ctx.beginPath();
     ctx.roundRect(x, y, s, s, r);
     ctx.clip();
-    const sw = s * 1.573 / 234.748, d = s * 0.707 / 234.748 * 2;
-    // 안쪽 하이라이트 — 왼쪽 위 가장자리 (inset 0.71px 0.71px, 흰 30%)
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = d * 2;
+    const sw = Math.max(px * 1.5, s * 1.573 / 234.748), d = Math.max(px, s * 0.707 / 234.748);
+    // 안쪽 하이라이트 — CSS inset 0.71px 0.71px 0 흰 30% 그대로: 칸에서 오른쪽 아래로 d 만큼 민 칸을 뺀 자리 = 왼쪽·위 가장자리 띠
+    ctx.fillStyle = `rgba(255,255,255,${hiA})`;
     ctx.beginPath();
-    ctx.roundRect(x - d, y - d, s, s, r);
-    ctx.stroke();
+    ctx.rect(x - d, y - d, s + d * 2, s + d * 2);
+    ctx.roundRect(x + d, y + d, s, s, r);
+    ctx.fill('evenodd');
     // 테두리 — 안쪽으로 sw
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.strokeStyle = `rgba(255,255,255,${rimA})`;
     ctx.lineWidth = sw * 2;
     ctx.beginPath();
     ctx.roundRect(x, y, s, s, r);
@@ -286,8 +328,61 @@ function drawProductSlot(ctx, slot, opts) {
   const icon = opts.icon;
   if (icon?.complete && icon.naturalWidth) {
     const [ix, iy, is] = slot.icon, k = is / 2000, [rx, ry, rw, rh] = PSLOT_ICON;
-    ctx.drawImage(icon, ix + rx * k, iy + ry * k, rw * k, rh * k);
+    ctx.drawImage(iconWithRim(icon), ix + rx * k, iy + ry * k, rw * k, rh * k);
   }
+}
+
+/**
+ * Eco 나무 아이콘 — 연두 배경(왼쪽 위가 거의 흰색)과 밝기가 비슷해 경계가 묻힌다.
+ * 아이콘 픽셀 안쪽 가장자리에만 — 맨 바깥 얇은 어두운 선 + 그 안쪽 흰 하이라이트 (왼쪽 위가 가장 진하고 오른쪽 아래로 옅어짐). 바깥(배경·칸)은 한 픽셀도 안 건드린다.
+ * 띠 두께는 아이콘이 실제로 차지하는 크기(불투명 영역) 기준이라 미리보기·원본 크기·무대 크롭 어디서나 같은 비율.
+ * 파일 이름에 -wood 가 있는 그림만 (Clear 아이콘은 그대로 돌려준다)
+ */
+const RIM_COLOR = '70,52,30'; // 나무색보다 어두운 갈색
+const RIM_LIGHT = '244,250,234'; // 하이라이트 — 흰색에 Eco 배경 연두를 살짝만 섞은 톤 (#F4FAEA)
+const rimCache = new WeakMap();
+export function iconWithRim(img) {
+  if (!/-wood\.png/.test(img?.src || '')) return img;
+  if (rimCache.has(img)) return rimCache.get(img);
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  // 불투명 영역 크기 — 띠 두께의 기준
+  let size = Math.min(W, H);
+  try {
+    const step = 4, d = g.getImageData(0, 0, W, H).data;
+    let x0 = W, x1 = 0, y0 = H, y1 = 0;
+    for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) {
+      if (d[(y * W + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 > x0) size = Math.min(x1 - x0, y1 - y0);
+  } catch { /* 못 읽으면 그림 크기 기준 */ }
+  // 아이콘 바깥만 칠한 판 — 이것의 그림자를 아이콘 안쪽(source-atop)에 떨군다 = 안쪽 그림자
+  const out = document.createElement('canvas');
+  out.width = W; out.height = H;
+  const o = out.getContext('2d');
+  o.fillStyle = '#000';
+  o.fillRect(0, 0, W, H);
+  o.globalCompositeOperation = 'destination-out';
+  o.drawImage(img, 0, 0);
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  const far = W * 4; // 판 자체는 멀리 그려 그림자만 남긴다
+  // [색, 알파, 흐림, 오른쪽 아래로 미는 거리] — 그리는 순서대로 쌓인다
+  //   어두운 선만 있으면 안으로 파인(음각) 느낌 → 그 바로 안쪽에 흰 하이라이트를 붙여 모서리가 빛 받는(양각) 느낌으로
+  //   1) 하이라이트(배경 연두 톤) — 왼쪽 위 가장자리 안쪽 띠  2) 어두운 선 — 맨 바깥 가장자리에 아주 얇게 (배경과 경계)
+  for (const [rgb, a, blur, off] of [[RIM_LIGHT, 0.95, 0.0035, 0.0065], [RIM_COLOR, 0.32, 0.002, 0.0015]]) {
+    g.shadowColor = `rgba(${rgb},${a})`;
+    g.shadowBlur = size * blur;
+    g.shadowOffsetX = far + size * off;
+    g.shadowOffsetY = size * off;
+    g.drawImage(out, -far, 0);
+  }
+  g.restore();
+  rimCache.set(img, c);
+  return c;
 }
 
 const HEAD = '"LGEI Headline", sans-serif';

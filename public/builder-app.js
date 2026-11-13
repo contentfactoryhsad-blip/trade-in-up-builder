@@ -20,7 +20,7 @@ import { blobToDataUrl, loadImage } from './lib/productApi.js';
 import { importFromUrl, importFromFile, editProduct } from './lib/productImportFlow.js';
 import { DEFAULT_FX, cloneFx, createBackground, drawComposite } from './lib/composite.js';
 import { orderQuad, warpInfill, colorField, detectObjects, adjustBackground, glowLayer } from './lib/infill.js';
-import { slotsForChannel, drawSlot, drawBox, logosReady, onIconLoad } from './lib/channelSlots.js';
+import { slotsForChannel, drawSlot, drawBox, iconWithRim, logosReady, onIconLoad } from './lib/channelSlots.js';
 import { newCopyState, renderCopyPanel, bindCopyPanel } from './lib/channelCopy.js';
 
 /**
@@ -43,13 +43,13 @@ const ASSET_GROUPS = [
     // 팔레트 이름 — 01-0N = Wide Product (TV), 02-0N = Tall Product (냉장고). noteAfter: 그 박스 다음 줄에 작은 안내 — 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형
     // 제품 자리는 1023 컷에서 눈으로 쟀다 — 1102 썸네일·standard 차이로 다시 재도 맞는다
     // section — 팔레트에서 이 박스부터 새 묶음(제목 + 구분선)으로 나눠 그린다
-    { id: 'b1-01-01', label: 'Wide Product 01', section: 'Main Key Visual _Wide', previewCy: 0.48, stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
+    { id: 'b1-01-01', label: 'Horizontal Product 01', section: 'Main Key Visual _Horizontal', previewCy: 0.48, stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
     // oldProduct — 고르면 깔아 두는 구형 제품 (크리스마스 기본 배치 제품처럼 옮기고·키우고·지울 수 있다).
     //   자리 = 원본 3000² 픽셀 [x, y, w, h] — <컷>-thumbnail-light.png 왼쪽 구형 제품에 맞춰 쟀다 (그림자까지 든 이미지 전체 자리 — 제품 부분이 썸네일 구형 제품과 겹친다)
-    { id: 'b1-01-02', label: 'Wide Product 02', oldProduct: { id: 'old-tv', label: 'Old TV', src: 'product/old-tv.png', srcDark: 'product/old-tv-dark.png', box: [1094, 1396, 222.8, 172.8] }, noteAfter: '* Wide Product - A product wider than it is tall (e.g. TV)', previewCy: 0.48, stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
+    { id: 'b1-01-02', label: 'Horizontal Product 02', oldProduct: { id: 'old-tv', label: 'Old TV', src: 'product/old-tv.png', srcDark: 'product/old-tv-dark.png', box: [1094, 1396, 222.8, 172.8] }, noteAfter: '* Horizontal Product - A product wider than it is tall (e.g. TV)', previewCy: 0.48, stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
     // previewCy — 캔버스 미리보기 창 세로 중심. 낮출수록 그림이 내려온다. TV 0.48 · 02-01 0.47 · 02-02 0.49 (previewCy — build-assets.sh 미리보기 세로 중심과 같은 값)
-    { id: 'b1-02-01', label: 'Tall Product 01', section: 'Main Key Visual _Tall', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
-    { id: 'b1-02-02', label: 'Tall Product 02', oldProduct: { id: 'old-ref', label: 'Old refrigerator', src: 'product/old-ref.png', srcDark: 'product/old-ref-dark.png', box: [1092, 1284.9, 221, 355.8] }, noteAfter: '* Tall Product - A product taller than it is wide (e.g. refrigerator)', previewCy: 0.49, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
+    { id: 'b1-02-01', label: 'Vertical Product 01', section: 'Main Key Visual _Vertical', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
+    { id: 'b1-02-02', label: 'Vertical Product 02', oldProduct: { id: 'old-ref', label: 'Old refrigerator', src: 'product/old-ref.png', srcDark: 'product/old-ref-dark.png', box: [1092, 1284.9, 221, 355.8] }, noteAfter: '* Vertical Product - A product taller than it is wide (e.g. refrigerator)', previewCy: 0.49, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
   ] },
   // hidden — 시안 정리로 빌더 팔레트에서만 숨긴다 (에셋·설정은 그대로 — 다시 쓰려면 hidden 만 지운다)
   { key: 'basic-02', label: 'Basic 02', hidden: true, tones: true, bgColors: true, assets: [
@@ -767,7 +767,7 @@ function renderEdit() {
     <div class="tb-edit-asset">
       <p class="name">${esc(asset.label)}</p>
       <p class="meta">${esc(versionLabel(asset.version))} · ${esc(group.label)}${asset.size ? ` · ${asset.size[0]} × ${asset.size[1]}` : ''}</p>
-      ${asset.art ? `<div class="tb-edit-frame"><img src="${asset.src || frameUrl(asset)}" alt="${esc(asset.label)}" draggable="false" /><canvas id="frameView" hidden></canvas>${layoutNav(asset)}</div>` : ''}
+      ${asset.art ? `<div class="tb-edit-frame"><img src="${asset.src || frameUrl(asset)}" alt="${esc(asset.label)}" draggable="false" /><canvas id="frameView" width="800" height="800" hidden></canvas>${layoutNav(asset)}</div>` : ''}
       ${group.bgColors && state.step === 1 /* Background Color 는 2 단계(Image Edit)에서만 */ ? `
         <div class="tb-bgcolor">
           <p class="tb-acc-item-label">Background Color</p>
@@ -890,11 +890,11 @@ const SLOT_PANEL = `
 
 /**
  * Box — Background Color 아래. 칸은 한 가지 (흰 채움 + 글래스 테두리·하이라이트 + 둘레·아래 그림자 — lib/channelSlots.js drawBox),
- * 투명도만 고른다. 기본 80%
+ * 투명도만 고른다. 기본 80% — Background Color 07 Eco 는 25% (진한 그린 배경에 투명 글래스 칸)
  */
-const BOX_ALPHA = 0.8;
-/** 지금 칸 모양 — 캔버스·매체 미리보기가 같이 쓴다 */
-const boxLook = () => ({ alpha: state.box.opacity ?? BOX_ALPHA, glass: true });
+const BOX_ALPHA = () => bgColorOf('slot') === 'c7' ? 0.25 : 0.8;
+/** 지금 칸 모양 — 캔버스·매체 미리보기가 같이 쓴다. 고른 값이 없으면 배경 컬러별 기본값 */
+const boxLook = () => ({ alpha: state.box.opacity ?? BOX_ALPHA(), glass: true });
 function boxPanel() {
   const v = Math.round(boxLook().alpha * 100);
   return `
@@ -1270,11 +1270,14 @@ function drawBoxes(ctx, boxes) {
   for (const b of boxes) drawBox(ctx, b.x * W, b.y * H, b.w * W, r, look);
   const icon = stageIcon(findAsset(state.selectedId));
   if (!icon.complete || !icon.naturalWidth) return;
+  const k = W / 3000, [cx, cy, cw, ch] = SLOT_ICON_CROP;
+  const rim = iconWithRim(icon);
+  // Eco 나무 아이콘은 가장자리 띠를 넣은 그림을 통째로 — 무대에 구운 같은 자리 아이콘을 그대로 덮는다 (매체 사이즈 판과 같게)
+  if (rim !== icon) { ctx.drawImage(rim, cx * k, cy * k, cw * k, ch * k); return; }
   ctx.save();
   ctx.beginPath();
   for (const b of boxes) ctx.roundRect(b.x * W - 2, b.y * H - 2, b.w * W + 4, b.h * H + 4, r);
   ctx.clip();
-  const k = W / 3000, [cx, cy, cw, ch] = SLOT_ICON_CROP;
   ctx.drawImage(icon, cx * k, cy * k, cw * k, ch * k);
   ctx.restore();
 }
@@ -1800,6 +1803,9 @@ editBody.addEventListener('click', e => {
   if (dot) {
     const cur = findAsset(state.selectedId);
     state.bgColor = dot.dataset.bgcolor;
+    // Box 기본 투명도가 배경 컬러를 따라가므로 (Eco 25%) 패널 슬라이더도 다시 그린다
+    const box = $('#boxControl');
+    if (box) box.innerHTML = boxPanel();
     const next = cur && assetId(cur.asset.version, cur.group.key, cur.asset.base);
     if (next && next !== state.selectedId) { void swapTo(() => {}, () => next); return; }
     document.querySelectorAll('[data-bgcolor]').forEach(b => {
@@ -1822,7 +1828,7 @@ editBody.addEventListener('click', e => {
   const baBtn = e.target.closest('[data-mseg="on"] button');
   if (baBtn) { state.mood.on = baBtn.dataset.v === 'after'; update(); return; }
 
-  // Box — Reset 은 기본 80% 로
+  // Box — Reset 은 기본값으로 (80%, Eco 는 25%)
   if (e.target.closest('[data-act="box-reset"]')) {
     state.box.opacity = null;
     const box = $('#boxControl');
