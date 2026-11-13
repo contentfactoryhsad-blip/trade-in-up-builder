@@ -99,7 +99,28 @@ function drawIconRow(ctx, box, ic) {
 /** 매체 key → 사이즈 목록. 'all' 은 모든 매체를 이어 붙인다. 아직 없는 매체는 빈 배열. board = 'tall' (Tall Product 보드) · 'pslot' (Product Slot 01 · 02 보드) · 그 밖 Wide */
 export function slotsForChannel(key, board) {
   const data = board === 'pslot' ? SLOT_DATA_PSLOT : board === 'tall' ? SLOT_DATA_TALL : SLOT_DATA;
-  return key === 'all' ? Object.values(data).flat() : data[key] || [];
+  return key === 'all' ? Object.entries(data).flatMap(([k, list]) => ordered(k, list)) : ordered(key, data[key] || []);
+}
+
+/*
+  LG.com 사이즈 순서 — 블프 빌더(lgcomSlots.ts LGCOM_SLOTS)와 같게 ST0001 여섯 장이 먼저. 데이터는 Figma 보드 순서라 여기서 다시 줄 세운다 (목록에 없는 사이즈는 맨 뒤)
+*/
+const LGCOM_ORDER = [
+  'ST0001-pc-1920x720', 'ST0001-mo-720x960', 'ST0001-pc-1600x400', 'ST0001-mo-720x830', 'ST0001-pc-1600x320', 'ST0001-mo-720x750',
+  'PR0001-pc-960x600', 'PR0001-pc-mo-630x420', 'PD0046-pc-464x300', 'ST0041-640x340', 'PR0001-928x600',
+  'ST0044-mo-656x436', 'ST0044-pc-342x228',
+  'CM0001-gnb-373x190', 'CM0001-gnb-620x316', 'CM0001-gnb-322x164', 'CM0001-lnb-pc-mo-580x180',
+  'PD0041-pc-mo-464x550',
+  'ST0004-pc-586x842', 'ST0004-pc-952x409', 'ST0004-pc-830x409', 'ST0004-pc-464x409', 'ST0004-pc-342x409', 'ST0004-mo-720x480', 'ST0004-mo-720x720',
+  'ST0047-pc-1920x300', 'ST0047-mo-720x420',
+  'PD0001-pc-mo-768x1200', 'PD0001-pc-800x800', 'PD0041-pc-mo-464x600', 'PR0015-pc-403x500', 'PR0015-mo-572x800',
+].map(id => id.toLowerCase());
+const lgcomRank = s => {
+  const i = LGCOM_ORDER.indexOf(s.key.toLowerCase().replace(/^lgcom-/, '').replace(/\(.*?\)/g, '').trim());
+  return i < 0 ? LGCOM_ORDER.length : i;
+};
+function ordered(key, list) {
+  return key === 'lg-com' ? [...list].sort((a, b) => lgcomRank(a) - lgcomRank(b)) : list;
 }
 
 /**
