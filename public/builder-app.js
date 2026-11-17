@@ -43,13 +43,16 @@ const ASSET_GROUPS = [
     // 팔레트 이름 — 01-0N = Wide Product (TV), 02-0N = Tall Product (냉장고). noteAfter: 그 박스 다음 줄에 작은 안내 — 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형
     // 제품 자리는 1023 컷에서 눈으로 쟀다 — 1102 썸네일·standard 차이로 다시 재도 맞는다
     // section — 팔레트에서 이 박스부터 새 묶음(제목 + 구분선)으로 나눠 그린다
-    { id: 'b1-01-01', label: 'Horizontal Product 01', section: 'Main Key Visual _Horizontal', previewCy: 0.48, stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
+    // newProduct — 고르면 깔아 두는 새 제품 (Product 1). 자리 = 그림이 있는 데까지 잘라 둔 이미지(tv-new · ref-new, 그림자 포함 — 가이드 박스가 제품에 붙는다)를
+    //   썸네일 새 제품에 맞춘 3000² 픽셀 [x, y, w, h]
+    //   (썸네일 − 빈 무대 차이에 크기·자리를 맞춰 쟀다. Trade In · Up 같은 자리). 에셋마다 자리가 달라 id 도 따로 — 01 ↔ 02 로 가면 새 자리로 다시 깐다
+    { id: 'b1-01-01', label: 'Horizontal Product 01', section: 'Main Key Visual _Horizontal', newProduct: { id: 'new-tv-01', label: 'New TV', src: 'product/tv-new.png', box: [1143.8, 1231.8, 474.4, 290.4] }, previewCy: 0.48, stage: { cx: 0.469, bottom: 0.51, h: 0.097 } },
     // oldProduct — 고르면 깔아 두는 구형 제품 (크리스마스 기본 배치 제품처럼 옮기고·키우고·지울 수 있다).
     //   자리 = 원본 3000² 픽셀 [x, y, w, h] — <컷>-thumbnail-light.png 왼쪽 구형 제품에 맞춰 쟀다 (그림자까지 든 이미지 전체 자리 — 제품 부분이 썸네일 구형 제품과 겹친다)
-    { id: 'b1-01-02', label: 'Horizontal Product 02', oldProduct: { id: 'old-tv', label: 'Old TV', src: 'product/old-tv.png', srcDark: 'product/old-tv-dark.png', box: [1094, 1396, 222.8, 172.8] }, noteAfter: '* Horizontal Product - A product wider than it is tall (e.g. TV)', previewCy: 0.48, stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
+    { id: 'b1-01-02', label: 'Horizontal Product 02', newProduct: { id: 'new-tv-02', label: 'New TV', src: 'product/tv-new.png', box: [1363, 1209.7, 367.6, 225] }, oldProduct: { id: 'old-tv', label: 'Old TV', src: 'product/old-tv.png', srcDark: 'product/old-tv-dark.png', box: [1094, 1396, 222.8, 172.8] }, noteAfter: '* Horizontal Product - A product wider than it is tall (e.g. TV)', previewCy: 0.48, stage: { cx: 0.516, bottom: 0.48, h: 0.072 } },
     // previewCy — 캔버스 미리보기 창 세로 중심. 낮출수록 그림이 내려온다. TV 0.48 · 02-01 0.47 · 02-02 0.49 (previewCy — build-assets.sh 미리보기 세로 중심과 같은 값)
-    { id: 'b1-02-01', label: 'Vertical Product 01', section: 'Main Key Visual _Vertical', previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
-    { id: 'b1-02-02', label: 'Vertical Product 02', oldProduct: { id: 'old-ref', label: 'Old refrigerator', src: 'product/old-ref.png', srcDark: 'product/old-ref-dark.png', box: [1092, 1284.9, 221, 355.8] }, noteAfter: '* Vertical Product - A product taller than it is wide (e.g. refrigerator)', previewCy: 0.49, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
+    { id: 'b1-02-01', label: 'Vertical Product 01', section: 'Main Key Visual _Vertical', previewZoom: 3.135 /* 미리보기만 5% 줌아웃 (Light·Dark) */, newProduct: { id: 'new-ref-01', label: 'New refrigerator', src: 'product/ref-new.png', box: [1227, 1041, 323.3, 592.2] }, previewCy: 0.47, stage: { cx: 0.463, bottom: 0.544, h: 0.188 } },
+    { id: 'b1-02-02', label: 'Vertical Product 02', previewZoom: 2.97 /* 미리보기만 10% 줌아웃 (Light·Dark) */, newProduct: { id: 'new-ref-02', label: 'New refrigerator', src: 'product/ref-new.png', box: [1407, 1041, 293.2, 537.1] }, oldProduct: { id: 'old-ref', label: 'Old refrigerator', src: 'product/old-ref.png', srcDark: 'product/old-ref-dark.png', box: [1092, 1284.9, 221, 355.8] }, noteAfter: '* Vertical Product - A product taller than it is wide (e.g. refrigerator)', previewCy: 0.475 /* 여백 같은 0.4665 에서 그림을 조금 올렸다 */, stage: { cx: 0.518, bottom: 0.536, h: 0.17 } },
   ] },
   // hidden — 시안 정리로 빌더 팔레트에서만 숨긴다 (에셋·설정은 그대로 — 다시 쓰려면 hidden 만 지운다)
   { key: 'basic-02', label: 'Basic 02', hidden: true, tones: true, bgColors: true, assets: [
@@ -120,7 +123,7 @@ const toneOf = groupKey => (ASSET_GROUPS.find(g => g.key === groupKey)?.tones &&
 const plainId = (v, groupKey, base) => `${v}-${base}${toneOf(groupKey) === 'dark' ? '-dark' : ''}`;
 /** 그 변형 묶음(-np · -ni)이 하나라도 구워져 있나 */
 const hasCut = id => manifest.has(id) || BG_COLORS.some(c => c.suffix && manifest.has(id + c.suffix));
-/** 아이콘 없는 컷(-ni)이 구워진 에셋인가 — Basic 01 네 컷 (미리보기 오른쪽 위 Standard 토글) */
+/** 아이콘 없는 컷(-ni)이 구워진 에셋인가 — Basic 01 네 컷 (미리보기 오른쪽 위 With Icon / Without Icon 알약) */
 const hasNoIcon = (v, groupKey, base) => hasCut(plainId(v, groupKey, base) + '-ni');
 /**
  * 고른 Background Color 칸의 변형(-eco 등)이 구워져 있으면 그 id, 아니면 기본 id.
@@ -276,7 +279,7 @@ const state = {
   version: 'in',
   tone: {}, // 줄 key → 'light' | 'dark' (없으면 light)
   bgColor: 'c1', // 고른 Background Color 칸 key — 01 Standard 가 기본
-  noIcon: false, // Standard — 아이콘 없는 컷 (-ni) 으로 본다. 에셋을 새로 고르면 꺼진다
+  noIcon: false, // Without Icon — 아이콘 없는 컷 (-ni) 으로 본다. 에셋을 새로 고르면 꺼진다
   selectedId: null,
   upload: null, // UPLOAD IMAGE — 올린 완성 이미지 { src, w, h } (없으면 null)
   step: 0, // 상단 스텝 (0 부터) — 에셋을 고르면 1, 미리보기 아래 OK 를 누르면 2
@@ -493,6 +496,16 @@ function uploadSection() {
           <span class="tb-upload-mark">!</span>
           <span class="tb-upload-guide">Creation Guide</span>
           <div class="tb-upload-card">
+            <!-- 예시 — 3000×3000 판(Main Key Visual 컷) 가운데 1080×1080 (36%) 이 Safe Area -->
+            <div class="tb-safe-demo" aria-hidden="true">
+              <img src="${ASSET_DIR}/in-b1-01-01-frame.jpg" alt="" draggable="false" />
+              <svg viewBox="0 0 3000 3000" preserveAspectRatio="none">
+                <path d="M0 0H3000V3000H0Z M960 960V2040H2040V960Z" fill="rgb(0 0 0 / .45)" fill-rule="evenodd" />
+                <rect x="960" y="960" width="1080" height="1080" fill="none" stroke="#fd312e" stroke-width="22" stroke-dasharray="70 45" />
+              </svg>
+              <span class="tb-safe-demo-full">3000 × 3000</span>
+              <span class="tb-safe-demo-safe">Safe Area<br>1080 × 1080</span>
+            </div>
             <p class="tb-upload-card-title">Safe Area (center 1080 × 1080px of 3000 × 3000px)</p>
             <p class="tb-upload-card-text">Keep the main visual inside the Safe Area so the image is not cropped when varied across sizes.</p>
           </div>
@@ -561,7 +574,8 @@ function renderCanvas() {
              </div>
              ${!asset.upload && hasNoIcon(asset.version, group.key, asset.base) ? `
                <div class="tb-example-toggle" role="group" aria-label="Icon">
-                 <button type="button" data-noicon${state.noIcon ? ' class="on"' : ''} aria-pressed="${state.noIcon}">Standard</button>
+                 <button type="button" data-noicon="0"${!state.noIcon ? ' class="on"' : ''} aria-pressed="${!state.noIcon}">With Icon</button>
+                 <button type="button" data-noicon="1"${state.noIcon ? ' class="on"' : ''} aria-pressed="${state.noIcon}">Without Icon</button>
                </div>` : ''}`
           : `${IMAGE_ICON}<span>Artwork coming soon</span>`}
       </div>
@@ -605,8 +619,8 @@ function channelPicker() {
  * 바탕은 제품까지 합성한 3000² 완성 컷(#comp). 컬러·톤이 바뀌어도 빈 영역은 그 컷의 가장자리로, 그라데이션은 그 컷의 벽 색으로 맞춘다.
  * 카피는 매체를 고르면 Edit panel 에 뜨는 Copy 패널(state.copy) 값 — 비어 있으면 Figma 자리 표시 문구.
  */
-// 에셋 → 보드 ('tall' = Main Key Visual 02, '' = 01). Product Slot 줄(group 'slot')은 'pslot' — 세로형·가로형 어느 쪽이든 Product Slot 01 · 02 보드
-const SLOT_ASSETS = new Map([['b1-01-01', ''], ['b1-01-02', ''], ['b1-02-01', 'tall'], ['b1-02-02', 'tall']]);
+// 에셋 → 보드 — Figma Main Key Visual 01-01 '' · 01-02 'h2' · 02-01 'tall' · 02-02 'v2' (에셋마다 KV 자리가 다르다). Product Slot 줄(group 'slot')은 'pslot' — 세로형·가로형 어느 쪽이든 Product Slot 01 · 02 보드
+const SLOT_ASSETS = new Map([['b1-01-01', ''], ['b1-01-02', 'h2'], ['b1-02-01', 'tall'], ['b1-02-02', 'v2']]);
 // 올린 이미지(upload)는 Wide 보드 (기본 SLOT_DATA) — 내장 KV 처럼 3000² 완성 컷 자리에 얹는다
 const boardOf = hit => hit.group.key === 'slot' ? 'pslot' : hit.asset.upload ? '' : SLOT_ASSETS.get(hit.asset.base);
 /** 지금 판 종류의 글자 모드를 copy 에 옮긴다 — Copy 패널·매체 미리보기를 그리기 전에 */
@@ -663,6 +677,15 @@ function fadeColorFor(comp) {
   const base = state.bgColor === 'c1' && toneOf('basic-01') === 'light';
   const k = base ? 1 : FADE_DEPTH;
   return '#' + sum.map((v, i) => Math.round((v / n) * (1 - k * (1 - FADE_RATIO[i]))).toString(16).padStart(2, '0')).join('');
+}
+/**
+ * KV 판 바탕색 — Figma 의 #B0A79D (= 기본 컷의 그라데이션 색 #9C9185 를 흰색 쪽으로 20%).
+ * 다른 컬러도 같은 방식: 그 컷의 그라데이션 색을 흰색 쪽으로 20%. Dark 톤은 어두운 컷이라 그라데이션 색 그대로
+ */
+function kvGroundFor(fade) {
+  const light = toneOf('basic-01') === 'light';
+  const t = light ? 0.2 : 0;
+  return '#' + [1, 3, 5].map(i => Math.round(parseInt(fade.slice(i, i + 2), 16) * (1 - t) + 255 * t).toString(16).padStart(2, '0')).join('');
 }
 
 let slotsQueued = false;
@@ -733,7 +756,7 @@ function slotDrawArgs(hit, board) {
   const fadeColor = comp ? fadeColorFor(comp) : null;
   // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
   const pslotOpts = pslot ? { icon: slotIcon(hit.asset.version), products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version), box: boxLook() } : {};
-  return { comp, opts: { fadeColor, artVersion, ...pslotOpts } };
+  return { comp, opts: { fadeColor, kvGround: fadeColor ? kvGroundFor(fadeColor) : null, artVersion, ...pslotOpts } };
 }
 // 글꼴·로고가 늦게 읽히면 한 번 더
 Promise.all([document.fonts.load('600 20px "LGEI Headline"'), document.fonts.load('400 20px "LGEI Text"'), logosReady()]).then(() => renderSlots());
@@ -1127,6 +1150,7 @@ function buildProductList() {
   list.innerHTML = state.slots.map((slot, i) => `
     ${inBox ? `<p class="tb-box-label">BOX ${i + 1}</p>` : ''}
     <div class="item product-row" data-i="${i}">
+      <div class="tb-thumb-col">
       <div class="thumb">
         <span class="tag" style="--c:${colorOf(i)}">${i + 1}</span>
         <img alt="" hidden />
@@ -1134,6 +1158,8 @@ function buildProductList() {
           <button type="button" class="edit" data-act="edit" title="Edit (brush + crop)">Edit</button>
           <button type="button" class="remove" data-act="remove" title="Remove">×</button>
         </div>
+      </div>
+      ${slot.home ? '<button type="button" class="link tb-reset-slot" data-act="reset-slot" title="Back to the default product, size and position" hidden>Reset</button>' : ''}
       </div>
       <div class="product-inputs">
         <form class="row url-form">
@@ -1143,7 +1169,7 @@ function buildProductList() {
         <div class="row">
           <label class="file-btn ghost-btn">Upload<input type="file" accept="image/*" /></label>
           <button type="button" class="link change" data-act="change" hidden>Change from imported images</button>
-          ${i > 0 && !inBox ? '<button type="button" class="link tb-drop-slot" data-act="drop-slot">Delete</button>' : ''}
+          ${(i > 0 || slot.home) && !inBox ? '<button type="button" class="link tb-drop-slot" data-act="drop-slot">Delete</button>' : ''}
         </div>
         <p class="muted meta"></p>
       </div>
@@ -1184,6 +1210,11 @@ function syncProductList() {
     row.querySelector('.thumb-actions').hidden = !p;
     row.querySelector('.change').hidden = !(p?.images?.length);
     row.querySelector('.meta').textContent = p?.meta ? [p.meta.name, p.meta.model].filter(Boolean).join(' · ') : '';
+    const slot = state.slots[Number(row.dataset.i)];
+    const reset = row.querySelector('.tb-reset-slot');
+    if (reset) reset.hidden = !slotChanged(slot);
+    const drop = row.querySelector('.tb-drop-slot');
+    if (drop && slot?.home) drop.hidden = !p;
   });
   const add = $('[data-act="add-product"]');
   if (add) add.disabled = state.slots.length >= MAX_PRODUCTS;
@@ -1820,7 +1851,7 @@ editBody.addEventListener('click', e => {
   if (tab) { state.active = Number(tab.dataset.tab); update(); return; }
 
   const segBtn = e.target.closest('#fxPanel [data-seg] button');
-  if (segBtn) { activeFx()[segBtn.closest('[data-seg]').dataset.seg] = segBtn.dataset.v; update(); return; }
+  if (segBtn) { activeFx()[segBtn.closest('[data-seg]').dataset.seg] = segBtn.dataset.v; state.guide = true; update(); return; }
 
   const modeBtn = e.target.closest('#eraseMode button');
   if (modeBtn) { state.eraseMode = modeBtn.dataset.v; update(); return; }
@@ -1854,13 +1885,16 @@ editBody.addEventListener('click', e => {
       break;
     case 'drop-slot':
       if (slot.product && !confirm(`Remove product ${i + 1}?`)) return;
+      // 고정 칸은 칸을 남기고 사진만 비운다 (Reset 으로 되돌린다)
+      if (slot.home) { slot.product = null; state.guide = false; update(); break; }
       state.slots.splice(i, 1);
       state.active = Math.min(state.active, state.slots.length - 1);
       buildProductList();
       update();
       break;
     case 'edit':
-      if (slot.product) runImport(i, () => editProduct(slot.product, { box: boxMode() }), slot.product);
+      // 다듬고 나면 프리뷰에 그 제품 가이드 박스를 띄운다 (크기가 바뀐 걸 바로 보게)
+      if (slot.product) runImport(i, () => editProduct(slot.product, { box: boxMode() }), slot.product).then(() => { if (state.slots[i] === slot) { state.guide = true; update(); } });
       break;
     case 'remove':
       slot.product = null;
@@ -1869,14 +1903,19 @@ editBody.addEventListener('click', e => {
     case 'change':
       runImport(i, () => importFromUrl(slot.url, { images: slot.product?.images, box: boxMode() }), slot.product);
       break;
+    case 'reset-slot':
+      resetSlot(slot);
+      break;
     case 'fx-open':
-      // 같은 줄을 다시 누르면 접는다, 다른 줄이면 그 줄을 고르고 펼친다
+      // 같은 줄을 다시 누르면 접는다, 다른 줄이면 그 줄을 고르고 펼친다. 펼치면 프리뷰에 그 제품 가이드 박스를 띄운다
       state.fxOpen = !(state.fxOpen && state.active === i);
       state.active = i;
+      state.guide = state.fxOpen;
       update();
       break;
     case 'fx-reset':
-      state.slots[state.active].fx = cloneFx(DEFAULT_FX);
+      state.slots[state.active].fx = state.slots[state.active].home ? presetFx() : cloneFx(DEFAULT_FX);
+      state.guide = true;
       update();
       break;
     case 'fx-all': {
@@ -1937,7 +1976,8 @@ editBody.addEventListener('input', e => {
   }
   if (t.dataset.m) { state.mood[t.dataset.m] = Number(t.value); update(); return; }
   const path = t.dataset.fx;
-  if (path) { setPath(activeFx(), path, t.type === 'checkbox' ? t.checked : Number(t.value)); update(); }
+  // 그림자를 만지는 동안 프리뷰에 그 제품 가이드 박스를 띄운다
+  if (path) { setPath(activeFx(), path, t.type === 'checkbox' ? t.checked : Number(t.value)); state.guide = true; update(); }
 });
 
 editBody.addEventListener('change', async e => {
@@ -1969,12 +2009,14 @@ const canvasEl = $('#canvas');
 canvasEl.addEventListener('click', e => {
   if (e.target.closest('[data-act="open-channels"]')) goStep(2);
 });
-// Standard — 아이콘 없는 컷으로 갈아 끼운다 (같은 톤·Background Color). 한 번 더 누르면 원래 컷. 제품·설정은 그대로
+// With Icon / Without Icon — 반쪽 알약. Without Icon 은 아이콘 없는 컷으로 갈아 끼운다 (같은 톤·Background Color). 제품·설정은 그대로
 canvasEl.addEventListener('click', e => {
-  if (!e.target.closest('[data-noicon]')) return;
+  const btn = e.target.closest('[data-noicon]');
+  if (!btn) return;
+  const want = btn.dataset.noicon === '1';
   const cur = findAsset(state.selectedId);
-  if (!cur) return;
-  void swapTo(() => { state.noIcon = !state.noIcon; }, () => assetId(cur.asset.version, cur.group.key, cur.asset.base));
+  if (!cur || want === state.noIcon) return;
+  void swapTo(() => { state.noIcon = want; }, () => assetId(cur.asset.version, cur.group.key, cur.asset.base));
 });
 // 매체 알약 — 하나만 고른다, 한 번 더 누르면 해제
 canvasEl.addEventListener('click', e => {
@@ -2053,40 +2095,83 @@ canvasEl.addEventListener('pointerdown', e => {
 });
 
 /**
- * 구형 제품 기본 배치 — 팔레트에서 Wide · Tall Product 02 를 고르면 그 에셋의 oldProduct 를 제품 칸 하나로 깐다.
- * 업로드한 제품과 똑같이 고르고·옮기고·키우고·지운다. 다른 에셋으로 가면 깔아 둔 칸(preset)은 걷는다
+ * 기본 배치 제품 — 팔레트에서 에셋을 고르면 그 에셋의 newProduct(새 제품, Product 1) · oldProduct(구형 제품, 그다음 칸)를 제품 칸으로 깐다.
+ * 이 칸(home)은 고정 — 지워도 칸은 남고, 제품 칸 아래 Reset 으로 처음 제품·크기·자리·그림자로 되돌린다.
+ * 다른 에셋으로 가면 그 에셋에 없는 고정 칸은 걷는다 (사용자가 다른 제품을 올린 칸은 보통 칸으로 남긴다)
  */
-function placeOldProduct(asset, groupKey) {
-  if (!asset || asset.boxes) return;
-  const list = state.kvSlots, op = asset.oldProduct;
-  for (let i = list.length - 1; i >= 0; i--) if (list[i].preset && list[i].preset !== op?.id) list.splice(i, 1);
-  if (!list.length) list.push(newSlot(0));
-  if (state.active >= list.length) state.active = 0;
-  // Light · Dark 이미지가 따로 있다 (srcDark) — 같은 칸에서 톤만 바꾸면 자리는 두고 그림만 갈아 끼운다
-  const dark = toneOf(groupKey) === 'dark';
-  const load = i => runImport(i, async () => {
+const presetPlace = (op, st) => {
+  const [x, y, w, h] = op.box.map(v => v / 3000);
+  return { scale: h / st.h, dx: x + w / 2 - st.cx, dy: y + h - st.bottom };
+};
+// 그림자는 이미지에 이미 들어 있다 — 빌더 그림자(접지·바닥)는 꺼 두고 필요하면 패널에서 켠다
+const presetFx = () => { const fx = cloneFx(DEFAULT_FX); fx.contact.on = false; fx.floor.on = false; return fx; };
+function loadPreset(slot, op, dark) {
+  runImport(state.slots.indexOf(slot), async () => {
     const res = await fetch(`${ASSET_DIR}/${dark && op.srcDark ? op.srcDark : op.src}`);
     if (!res.ok) throw new Error(`Product load failed (${res.status})`);
     const original = await blobToDataUrl(await res.blob());
     const img = await loadImage(original);
     return { original, brushed: original, cropRect: null, src: original, w: img.naturalWidth, h: img.naturalHeight, meta: { name: op.label, model: 'Default' }, preset: op.id, presetDark: dark };
   });
-  const had = op && list.findIndex(s => s.preset === op.id);
-  if (op && had >= 0 && !!list[had].product?.presetDark !== dark) load(had);
-  if (op && had < 0) {
-    const [x, y, w, h] = op.box.map(v => v / 3000);
-    const st = asset.stage;
+}
+/** 고정 칸에 처음 이미지가 그대로 있나 — Edit(브러시·크롭)로 다듬으면 src 가 원본과 달라진다 */
+const presetIntact = slot => !!slot.product && slot.preset === slot.home?.op.id && slot.product.src === slot.product.original && !slot.product.cropRect;
+/** 고정 칸이 처음 상태에서 바뀌었나 — 지웠거나, 다른 제품을 올렸거나, Edit 로 다듬었거나, 옮기거나 키웠거나, 그림자를 고쳤거나 */
+function slotChanged(slot) {
+  const h = slot?.home;
+  if (!h) return false;
+  if (!presetIntact(slot) || slot.eraser) return true;
+  const near = (a, b) => Math.abs(a - b) > 1e-6;
+  if (near(slot.place.scale, h.place.scale) || near(slot.place.dx, h.place.dx) || near(slot.place.dy, h.place.dy)) return true;
+  return JSON.stringify(slot.fx) !== JSON.stringify(presetFx());
+}
+/** Reset — 고정 칸을 처음 제품·크기·자리·그림자로 */
+function resetSlot(slot) {
+  const h = slot.home;
+  if (!h) return;
+  Object.assign(slot.place, h.place);
+  slot.fx = presetFx();
+  slot.eraser = null;
+  Object.assign(slot.screen, { quadN: null, infill: null, method: null });
+  state.active = state.slots.indexOf(slot);
+  state.guide = true;
+  if (!presetIntact(slot)) loadPreset(slot, h.op, h.dark);
+  update();
+}
+function placeOldProduct(asset, groupKey) {
+  if (!asset || asset.boxes) return;
+  const list = state.kvSlots, ops = [asset.newProduct, asset.oldProduct].filter(Boolean);
+  for (let i = list.length - 1; i >= 0; i--) {
+    const h = list[i].home;
+    if (!h || ops.some(op => op.id === h.op.id)) continue;
+    // 사용자가 다른 제품을 올린 칸은 남긴다 (보통 칸으로)
+    if (list[i].product && list[i].preset !== h.op.id) list[i].home = null;
+    else list.splice(i, 1);
+  }
+  if (!list.length) list.push(newSlot(0));
+  // Light · Dark 이미지가 따로 있을 수 있다 (srcDark) — 같은 칸에서 톤만 바꾸면 자리는 두고 그림만 갈아 끼운다
+  const dark = toneOf(groupKey) === 'dark';
+  const loads = [];
+  ops.forEach((op, k) => {
+    const had = list.find(s => s.home?.op.id === op.id);
+    if (had) {
+      had.home.dark = dark;
+      if (op.srcDark && had.preset === op.id && !!had.product?.presetDark !== dark) loads.push([had, op]);
+      return;
+    }
     const slot = newSlot(0);
     slot.preset = op.id;
-    // 그림자는 이미지에 이미 들어 있다 — 빌더 그림자(접지·바닥)는 꺼 두고 필요하면 패널에서 켠다
-    slot.fx.contact.on = false;
-    slot.fx.floor.on = false;
-    Object.assign(slot.place, { scale: h / st.h, dx: x + w / 2 - st.cx, dy: y + h - st.bottom });
-    // 1 번 칸으로 — 비어 있는 1 번 칸은 그 자리를 쓰고, 제품이 있으면 앞에 끼운다
-    if (!list[0].product) list[0] = slot; else list.unshift(slot);
-    state.active = 0;
-    load(0);
-  }
+    slot.home = { op, place: presetPlace(op, asset.stage), dark };
+    slot.fx = presetFx();
+    Object.assign(slot.place, slot.home.place);
+    // k 번 칸으로 — 비어 있는 칸은 그 자리를 쓰고, 제품이 있으면 앞에 끼운다
+    if (list[k] && !list[k].product && !list[k].home) list[k] = slot; else list.splice(Math.min(k, list.length), 0, slot);
+    loads.push([slot, op]);
+  });
+  if (state.active >= list.length) state.active = 0;
+  // 칸을 다 끼운 뒤 번호를 잡아 읽는다 (읽는 사이 번호가 밀리지 않게)
+  for (const [slot, op] of loads) loadPreset(slot, op, dark);
+  if (loads.length) state.active = list.indexOf(loads[0][0]);
   buildProductList();
   update();
 }
@@ -2095,7 +2180,8 @@ function placeOldProduct(asset, groupKey) {
 function removeSlot(i) {
   const slot = state.slots[i];
   if (!slot) return;
-  if (state.slots.length === 1) { slot.product = null; slot.preset = null; }
+  // 고정 칸(기본 배치 New · Old)은 칸을 남기고 사진만 비운다 — 오른쪽 바 Reset 으로 되돌린다
+  if (slot.home || state.slots.length === 1) { slot.product = null; if (!slot.home) slot.preset = null; }
   else state.slots.splice(i, 1);
   state.guide = false;
   if (state.active >= state.slots.length || state.active > i) state.active = Math.max(0, state.active - 1);

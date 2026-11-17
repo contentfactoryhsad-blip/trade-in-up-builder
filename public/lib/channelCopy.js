@@ -32,10 +32,10 @@ const FIELDS = [
 
 /** LG 로고 — Figma "LG logo" 컴포넌트(white · Black · color)에 OG_White 를 더한 네 벌. 기본은 builder-app 이 판 종류마다 정한다 (logoIds) */
 const LOGO_VARIANTS = [
-  { id: 'white', label: 'LG White', src: 'assets/trade-in-up/logo/lg-logo-white.svg', thumbBg: '#1a1a1a' },
-  { id: 'black', label: 'LG Black', src: 'assets/trade-in-up/logo/lg-logo-black.svg', thumbBg: '#eeebe6' },
-  { id: 'og', label: 'LG OG', src: 'assets/trade-in-up/logo/lg-logo-og.svg', thumbBg: '#eeebe6' },
-  { id: 'ogwhite', label: 'LG OG_White', src: 'assets/trade-in-up/logo/lg-logo-ogwhite.svg', thumbBg: '#1a1a1a' },
+  { id: 'white', label: 'One Color_White', src: 'assets/trade-in-up/logo/lg-logo-white.svg', thumbBg: '#1a1a1a' },
+  { id: 'black', label: 'One Color_Black', src: 'assets/trade-in-up/logo/lg-logo-black.svg', thumbBg: '#eeebe6' },
+  { id: 'og', label: 'Basic', src: 'assets/trade-in-up/logo/lg-logo-og.svg', thumbBg: '#eeebe6' },
+  { id: 'ogwhite', label: 'Basic_White', src: 'assets/trade-in-up/logo/lg-logo-ogwhite.svg', thumbBg: '#1a1a1a' },
 ];
 
 export function newCopyState() {

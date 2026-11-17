@@ -15,6 +15,8 @@
  */
 import { SLOT_DATA } from './channelSlotData.js';
 import { SLOT_DATA_TALL } from './channelSlotDataTall.js';
+import { SLOT_DATA_H2 } from './channelSlotDataH2.js';
+import { SLOT_DATA_V2 } from './channelSlotDataV2.js';
 import { SLOT_DATA_PSLOT } from './channelSlotDataSlot.js';
 import { ICON_LIST, iconSvg, splitLabel } from './icons.js';
 import { UPLOAD_ART } from './uploadArt.js';
@@ -28,6 +30,22 @@ const ICON_ROWS = {
   'lgcom-ST0001-pc-1920x720': { x: 240, y: 486, w: 424, h: 60 },
   'lgcom-ST0001-mo-720x960': { x: 34, y: 762, w: 510, h: 72 },
 };
+/*
+  캐러셀 인디케이터 — LG.com 히어로 두 사이즈에만. 판 전체 크기 오버레이 그림 (블프 빌더 content-template/overlay 와 같다).
+  Copy 패널의 Indicator 를 켜면 맨 위에 얹는다 (Figma 레이아웃의 마지막 레이어)
+*/
+const INDICATORS = { 'lgcom-ST0001-pc-1920x720': 'indicator-pc', 'lgcom-ST0001-mo-720x960': 'indicator-mo' };
+const indicatorCache = new Map();
+function indicatorImage(id) {
+  if (!indicatorCache.has(id)) {
+    const img = new Image();
+    img.onload = () => iconRedraw();
+    img.src = `assets/trade-in-up/overlay/${id}.png`;
+    indicatorCache.set(id, img);
+  }
+  const img = indicatorCache.get(id);
+  return img.complete && img.naturalWidth ? img : null;
+}
 const iconCache = new Map();
 let iconRedraw = () => {};
 /** 아이콘 SVG 를 처음 읽으면 다시 그리게 — builder-app 이 renderSlots 를 넘긴다 */
@@ -96,9 +114,10 @@ function drawIconRow(ctx, box, ic) {
 
 // 다크 톤 — 라이트 KV 의 베이지(#9c9185 등)로 칠한 바탕·그라데이션을 다크 KV 의 같은 자리 색으로 바꾼다
 // (#182a24 — 라이트 KV 에서 그 색인 자리들을 다크 KV 에서 읽은 평균, 자리마다 차이 ±3 안쪽). 검정은 그대로
-/** 매체 key → 사이즈 목록. 'all' 은 모든 매체를 이어 붙인다. 아직 없는 매체는 빈 배열. board = 'tall' (Tall Product 보드) · 'pslot' (Product Slot 01 · 02 보드) · 그 밖 Wide */
+/** 매체 key → 사이즈 목록. 'all' 은 모든 매체를 이어 붙인다. 아직 없는 매체는 빈 배열.
+ *  board = '' (Main Key Visual 01-01 · Horizontal 01) · 'h2' (01-02 · Horizontal 02) · 'tall' (02-01 · Vertical 01) · 'v2' (02-02 · Vertical 02) · 'pslot' (Product Slot 01 · 02 보드) */
 export function slotsForChannel(key, board) {
-  const data = board === 'pslot' ? SLOT_DATA_PSLOT : board === 'tall' ? SLOT_DATA_TALL : SLOT_DATA;
+  const data = { pslot: SLOT_DATA_PSLOT, tall: SLOT_DATA_TALL, h2: SLOT_DATA_H2, v2: SLOT_DATA_V2 }[board] || SLOT_DATA;
   return key === 'all' ? Object.entries(data).flatMap(([k, list]) => ordered(k, list)) : ordered(key, data[key] || []);
 }
 
@@ -119,8 +138,14 @@ const lgcomRank = s => {
   const i = LGCOM_ORDER.indexOf(s.key.toLowerCase().replace(/^lgcom-/, '').replace(/\(.*?\)/g, '').trim());
   return i < 0 ? LGCOM_ORDER.length : i;
 };
+/*
+  LG.com 밖의 매체 — 판 모양이 비슷한 것끼리 모아 보인다 (컷이 다 보이는 판 · 한쪽이 잘리는 판 · 양쪽이 잘리는 띠가 번갈아 나오면 들쭉날쭉해 보여서).
+  세로형 → 정사각에 가까운 판 → 가로형(카피 왼쪽, 컷 한쪽이 잘림) → 긴 가로형 → 띠 배너(로고·제품 왼쪽, 카피 오른쪽) 순서, 묶음 안에서는 가로세로 비율 순
+*/
+const SHAPE_EDGES = [0.9, 1.25, 2.2, 5];
+const shapeRank = s => { const r = s.w / s.h; const g = SHAPE_EDGES.findIndex(e => r < e); return (g < 0 ? SHAPE_EDGES.length : g) * 100 + r; };
 function ordered(key, list) {
-  return key === 'lg-com' ? [...list].sort((a, b) => lgcomRank(a) - lgcomRank(b)) : list;
+  return key === 'lg-com' ? [...list].sort((a, b) => lgcomRank(a) - lgcomRank(b)) : [...list].sort((a, b) => shapeRank(a) - shapeRank(b));
 }
 
 /**
@@ -159,6 +184,37 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
   strip(IN, last, 1, 1, 0, B, L, H - B);
   strip(last, last, 1, 1, R, B, W - R, H - B);
   ctx.drawImage(art, ax, ay, as, as);
+}
+
+/**
+ * KV 원형 마스크 — Figma 컴포넌트 "KV radial mask" (Banner Template › TEST — Radial KV mask, 16995:24694) 와 같은 값.
+ * 컷(정사각) 기준 가운데 (50%, 46.5%), 가로 반지름 49% · 세로 42% 타원. 안쪽 18% 까지 그대로, 그 바깥은 smootherstep 으로 0 까지.
+ * 판은 바탕색(opts.kvGround) 단색 — 컷은 이 마스크로 바탕색에 녹는다. 컷마다 한 번만 만들어 둔다 (마스크는 컷 좌표라 사이즈와 상관없다)
+ */
+const MASK = { cx: 0.5, cy: 0.465, rx: 0.49, ry: 0.42, inner: 0.18 };
+const smoother = t => t * t * t * (t * (t * 6 - 15) + 10);
+const maskCache = new WeakMap();
+function maskedArt(art, version) {
+  const hit = maskCache.get(art);
+  if (hit && hit.version === version) return hit.c;
+  const N = Math.min(art.naturalWidth || art.width, 3000);
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(art, 0, 0, N, N);
+  g.globalCompositeOperation = 'destination-in';
+  g.translate(N * MASK.cx, N * MASK.cy);
+  g.scale(1, MASK.ry / MASK.rx);
+  const R = N * MASK.rx;
+  const grad = g.createRadialGradient(0, 0, 0, 0, 0, R);
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  const STEPS = 20;
+  for (let i = 0; i <= STEPS; i++) grad.addColorStop(MASK.inner + (1 - MASK.inner) * i / STEPS, `rgba(0,0,0,${(1 - smoother(i / STEPS)).toFixed(4)})`);
+  g.fillStyle = grad;
+  g.fillRect(-R * 2, -R * 2 * MASK.rx / MASK.ry, R * 4, R * 4 * MASK.rx / MASK.ry);
+  maskCache.set(art, { c, version });
+  return c;
 }
 
 /**
@@ -438,7 +494,7 @@ export const logosReady = () => Promise.all(Object.keys(LOGOS).map(id => {
  */
 /**
  * opts.imageOnly: LG.com 다운로드용 — 카피·CTA 없이 (이미지 업로드 가이드: 아이콘·디스클레이머만 남긴다)
- * opts.fadeColor: 그라데이션 색 (#rrggbb) — 없으면 Figma 색 그대로, opts.artVersion: 컷이 바뀌면 올린다 (가장자리 사본을 다시 만든다)
+ * opts.kvGround: KV 판 바탕색 (#rrggbb, Figma #B0A79D = 기본 컷) — 컷은 원형 마스크로 이 색에 녹는다. opts.artVersion: 컷이 바뀌면 올린다 (마스크 사본을 다시 만든다)
  * opts.icon · products · bg: Product Slot 판 (drawProductSlot)
  * opts.ground: 올린 이미지 — 판 바탕을 이 색(이미지 가장자리 평균)으로 깔고, 빈 곳은 거울 늘이기(drawArtMirrored), KV 용 그라데이션(fades)은 뺀다 (블프와 같다)
  * opts.darkInk: Dark 글자 모드 글자색 (없으면 #000) — 올린 이미지는 블프처럼 #111
@@ -457,11 +513,18 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (slot.boxes) drawProductSlot(ctx, slot, opts);
   // 올린 이미지는 블프 빌더 판 자리로 (uploadArt.js — Safe Area 가 사이즈마다 거의 다 보인다)
   else if (art && slot.art && opts.ground) drawArtMirrored(ctx, art, UPLOAD_ART[slot.key] || slot.art, W, H);
-  else if (art && slot.art) drawArtFilled(ctx, art, slot.art, W, H, opts.artVersion);
-  // Figma 기본 그라데이션 색 — 기본 컷(Standard Light)일 때 opts.fadeColor 도 이 색이 된다
+  else if (art && slot.art) {
+    // KV — Figma 처럼 판 바탕색 단색 위에 원형 마스크로 녹인 컷 (그라데이션 레이어 없음)
+    ctx.fillStyle = opts.kvGround || '#b0a79d';
+    ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingQuality = 'high';
+    const [ax, ay, as] = slot.art;
+    ctx.drawImage(maskedArt(art, opts.artVersion), ax, ay, as, as);
+  }
+  // 예전 그라데이션(fades) — 원형 마스크로 바뀌어 KV 판에는 쓰지 않는다 (opts.legacyFades 일 때만)
   const hex = opts.fadeColor || '#9c9185';
   const alpha = a => `${hex}${Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0')}`;
-  for (const f of opts.ground ? [] : slot.fades || []) {
+  for (const f of opts.ground || !opts.legacyFades ? [] : slot.fades || []) {
     ctx.save();
     ctx.transform(...f.m);
     const g = ctx.createLinearGradient(0, 0, 1, 0);
@@ -545,6 +608,12 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(val('cta'), bx + bw / 2, by + fh / 2 + b.sz * 0.04);
+  }
+
+  // 캐러셀 인디케이터 — LG.com 히어로 두 사이즈만, Copy 패널에서 Indicator 를 켰을 때 (LG.com 다운로드 imageOnly 에서는 뺀다)
+  if (!opts.imageOnly && show.indicator && INDICATORS[slot.key]) {
+    const img = indicatorImage(INDICATORS[slot.key]);
+    if (img) ctx.drawImage(img, 0, 0, W, H);
   }
 
   // 아이콘 줄 — LG.com 히어로 두 사이즈만, Copy 패널에서 Icons 를 켰을 때

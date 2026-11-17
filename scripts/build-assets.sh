@@ -44,8 +44,8 @@ bake() {
   sips -s format jpeg -s formatOptions 85 -c $tch $tcw $off "$SRC/$tile" --out "$OUT/$id-thumb.jpg" >/dev/null
   sips -z 152 280 "$OUT/$id-thumb.jpg" >/dev/null
   n=$(size_of "$SRC/$stage")
-  ph=$((n * 10 / pz))
-  if [ "$py" = 50 ] && [ "$pz" = 33 ]; then poff=""; else poff="--cropOffset $((n * py / 100 - ph / 2)) $(((n - ph * 980 / 464) / 2))"; fi
+  ph=$(awk -v n=$n -v z=$pz 'BEGIN { print int(n * 10 / z) }') # 줌은 소수도 된다 (예 31.35)
+  if [ "$py" = 50 ] && [ "$pz" = 33 ]; then poff=""; else poff="--cropOffset $(awk -v n=$n -v p=$py -v h=$ph 'BEGIN { print int(n * p / 100) - int(h / 2) }') $(((n - ph * 980 / 464) / 2))"; fi
   sips -s format jpeg -s formatOptions 85 -c $ph $((ph * 980 / 464)) $poff "$SRC/$stage" --out "$OUT/$id-preview.jpg" >/dev/null
   sips -z 928 1960 "$OUT/$id-preview.jpg" >/dev/null
   sips -s format jpeg -s formatOptions 85 -Z 1200 "$SRC/$stage" --out "$OUT/$id-frame.jpg" >/dev/null
@@ -130,8 +130,9 @@ for v in in up; do
   # TV 컷 미리보기 중심 48% — 캔버스 그림을 조금 내린다 (builder-app.js previewCy, 사용자 요청)
   for f in 01-01 01-02; do bake_cut $v-b1 "$ld" $f "1250 600 500" 60 48 51 48; done
   # 냉장고 타일 중심 — 02-01 은 45%, 02-02 는 47%. 미리보기 중심 — 02-01 47%, 02-02 49% (그림을 조금 올린다). 사용자 요청
-  bake_cut $v-b1 "$ld" 02-01 "1250 600 500" 60 45 51 47
-  bake_cut $v-b1 "$ld" 02-02 "1250 600 500" 60 47 51 49
+  bake_cut $v-b1 "$ld" 02-01 "1250 600 500" 60 45 51 47 31.35 # 미리보기만 5% 줌아웃 (3.3 × 0.95) — builder-app previewZoom 과 같다. 사용자 요청
+  # 02-02 미리보기: 10% 줌아웃 (3.3 × 0.9) + 세로 중심 47.5% (위·아래 여백이 같은 46.65% 에서 그림을 조금 올렸다). 사용자 요청
+  bake_cut $v-b1 "$ld" 02-02 "1250 600 500" 60 47 51 47.5 29.7
 done
 
 # 아이콘 없는 컷 (미리보기 오른쪽 위 Standard) — "1102 정리/basic-noicon/<컷>/<톤>/color-{standard,0N,eco}.png"
@@ -151,8 +152,8 @@ bake_noicon() {
   return 0
 }
 for f in 01-01 01-02; do bake_noicon $f 60 48 51 48; done
-bake_noicon 02-01 60 45 51 47
-bake_noicon 02-02 60 47 51 49
+bake_noicon 02-01 60 45 51 47 31.35
+bake_noicon 02-02 60 47 51 47.5 29.7
 
 # Slot — id <버전>-slot-v (세로형 = 아이콘 아래 칸 넷 한 줄, 1:4) / -slot-h (가로형 = 아이콘 양옆 두 칸씩, 2:2) (톤 없음)
 #   원본 = "1102 정리/<버전>/slot-new/<세로형|가로형>/"

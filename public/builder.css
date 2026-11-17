@@ -181,6 +181,10 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-acc-item .fx-card[hidden] { display: none; }
 .tb-acc-item .tabs[hidden] { display: none; }
 .tb-drop-slot { margin-left: auto; color: var(--gray-500); }
+/* 제품 칸 + 바로 아래 Reset (기본 배치 New · Old 칸을 처음 제품·크기·자리로) */
+.tb-thumb-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+.tb-reset-slot { font-size: 12px; color: var(--gray-500); }
+.tb-reset-slot:hover { color: var(--gray-900); }
 
 /* 제품 선택 테두리는 숨긴다 — 손잡이(끌기)는 그대로 동작하고, 커서만 grab 으로 알려준다 */
 .tb-scene .product.active { outline: none; }
@@ -301,7 +305,7 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-acc.fixed > .tb-acc-head { cursor: default; }
 .tb-acc.fixed > .tb-acc-head svg.tb-acc-chev { display: none; }
 
-/* No Old Product 토글 — 미리보기 오른쪽 위 (크리스마스 빌더 예시 토글과 같은 모양) */
+/* With Icon / Without Icon 알약 — 미리보기 오른쪽 위, 반씩 눌러 고른다 (크리스마스 빌더 예시 토글과 같은 모양) */
 .tb-example-toggle {
   position: absolute; top: 12px; right: 12px; z-index: 3; display: flex; padding: 3px; gap: 2px;
   border-radius: 999px; background: rgb(255 255 255 / .85); box-shadow: 0 1px 4px rgb(0 0 0 / .12); backdrop-filter: blur(6px);
@@ -515,6 +519,13 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1);
 }
 .tb-upload-help:hover .tb-upload-card { display: block; }
+/* Creation Guide 예시 그림 — 카드 폭(제목 한 줄)에 맞춘 정사각, 가운데 Safe Area 만 밝게 */
+.tb-safe-demo { position: relative; width: 0; min-width: 100%; aspect-ratio: 1; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: var(--gray-100); }
+.tb-safe-demo img, .tb-safe-demo svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tb-safe-demo img { object-fit: cover; }
+.tb-safe-demo span { position: absolute; font-size: 10px; font-weight: 600; line-height: 1.25; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+.tb-safe-demo-full { top: 8px; left: 8px; }
+.tb-safe-demo-safe { left: 32%; top: 32%; transform: translate(4px, -100%); margin-top: -4px; }
 .tb-upload-card-title { margin: 0 0 2px; font-size: 11px; font-weight: 600; color: var(--gray-900); white-space: nowrap; }
 .tb-upload-card-text { margin: 0; width: 0; min-width: 100%; font-size: 11px; line-height: 1.375; color: var(--gray-600); }
 /* 캔버스 미리보기 — 올린 정사각은 자르지 않고 가운데에 */
