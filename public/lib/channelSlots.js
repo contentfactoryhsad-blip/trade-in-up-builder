@@ -20,6 +20,8 @@ import { SLOT_DATA_V2 } from './channelSlotDataV2.js';
 import { SLOT_DATA_PSLOT } from './channelSlotDataSlot.js';
 import { ICON_LIST, iconSvg, splitLabel } from './icons.js';
 import { UPLOAD_ART } from './uploadArt.js';
+import { COPY_PLACEHOLDER } from './channelCopy.js';
+import { MKV_TEXT } from './channelSlotText.js';
 export { SLOT_DATA };
 
 /*
@@ -443,6 +445,12 @@ export function iconWithRim(img) {
 
 const HEAD = '"LGEI Headline", sans-serif';
 const TEXT = '"LGEI Text", sans-serif';
+/** LG.com 기본 문구 — Figma LG.com Banner templates_Jun 템플릿 글 그대로 (헤드라인은 두 줄로 끊겨 있다) */
+const LGCOM_PLACEHOLDER = {
+  eyebrow: 'Lorem ipsumdolor sit amet',
+  headline: 'Lorem ipsum dolor sit\nametap consectetur',
+  subcopy: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+};
 const PLACEHOLDER = {
   eyebrow: 'Lorem ipsum dolor sit amet, consectetur',
   headline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit',
@@ -503,7 +511,16 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (slot.noCopy) slot = { ...slot, logo: null, rows: [], cta: null, disc: null };
   const { w: W, h: H } = slot;
   const show = cs.show;
-  const val = k => (cs.copy[k] ?? '').trim() || PLACEHOLDER[k];
+  // 비운 칸은 그 줄을 뺀다 (체크를 끈 것과 같다). 기본 문구 그대로면 자리 표시 문구로 그린다 —
+  // LG.com 은 Figma LG.com 템플릿 문구(헤드라인 2줄), 다른 매체는 긴 문구로 사이즈별 줄바꿈을 Figma 처럼 (크리스마스 빌더와 같다)
+  const val = k => {
+    const v = (cs.copy[k] ?? '').trim();
+    if (!v || v !== COPY_PLACEHOLDER[k]) return v;
+    // Product Slot 은 보드마다 Figma 템플릿에 들어간 문구(slot.ph) 그대로
+    const ph = slot.ph || MKV_TEXT[slot.key];
+    if (ph) return ph[k] || PLACEHOLDER[k];
+    return (slot.label === 'LG.com' && LGCOM_PLACEHOLDER[k]) || PLACEHOLDER[k];
+  };
   // 글자 모드 — Light 는 흰 글자, Dark 는 검은 글자 (카피·동그란 CTA·Disclaimer)
   const ink = cs.textMode === 'dark' ? (opts.darkInk || '#000') : '#fff';
   ctx.save();
@@ -554,7 +571,7 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   ctx.textBaseline = 'top';
   let shift = 0, lastEnd = null, lastFigmaEnd = null;
   rows.forEach(r => {
-    if (!on[r.k]) return;
+    if (!on[r.k] || !val(r.k)) { if (lastEnd != null) lastFigmaEnd = r.y + r.h; return; }
     const [face, weight] = FACE[r.k];
     ctx.font = `${weight} ${r.sz}px ${face}`;
     ctx.textAlign = r.al === 'C' ? 'center' : r.al === 'R' ? 'right' : 'left';
@@ -591,7 +608,7 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
     ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy);
     ctx.moveTo(cx + a * 0.35, cy - a * 0.65); ctx.lineTo(cx + a, cy); ctx.lineTo(cx + a * 0.35, cy + a * 0.65);
     ctx.stroke();
-  } else if (!opts.imageOnly && slot.cta && show.cta) {
+  } else if (!opts.imageOnly && slot.cta && show.cta && val('cta')) { // CTA 를 비우면 버튼째 숨긴다 (동그란 화살표는 그대로)
     const b = slot.cta;
     const [fx, fy, fw, fh] = b.b;
     ctx.font = `400 ${b.sz}px ${TEXT}`;
@@ -620,7 +637,7 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (ICON_ROWS[slot.key] && cs.icon && cs.icon.kind !== 'none') drawIconRow(ctx, ICON_ROWS[slot.key], cs.icon);
 
   // Disclaimer — 바닥 기준, 흰 빛과 검은 그림자 두 겹
-  if (slot.disc && show.disclaimer) {
+  if (slot.disc && show.disclaimer && val(slot.label === 'LG.com' ? 'disclaimer' : 'disclaimerMedia')) {
     const d = slot.disc;
     ctx.font = `400 ${d.sz}px ${TEXT}`;
     ctx.textAlign = 'left';

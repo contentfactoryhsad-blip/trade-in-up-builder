@@ -10,6 +10,41 @@
 import fs from 'node:fs';
 import { SLOT_DATA } from '../../public/lib/channelSlotData.js';
 const all = JSON.parse(fs.readFileSync(new URL('./figma-product-slot.json', import.meta.url), 'utf8'));
+// 카피 자리: Product Slot 보드는 _Product Slot 템플릿을 쓴다 → figma-pslot-copy-*.txt 로 덮는다 (줄을 못 읽은 판·LG.com 은 기존 값)
+const r1 = v => Math.round(v * 10) / 10;
+const ROW = { E: 'eyebrow', H: 'headline', S: 'subcopy' };
+const pcopy = {};
+for (const line of fs.readFileSync(new URL('./figma-pslot-copy-2026-11-18.txt', import.meta.url), 'utf8').split('\n')) {
+  if (!line.trim() || line.startsWith('#')) continue;
+  let [name, logo, rows, cta, disc] = line.split('|');
+  const lay = name.endsWith('@h') ? 'h' : 'v'; name = name.replace(/@h$/, '');
+  if (!rows || name.startsWith('lgcom')) continue;
+  pcopy[`${name}|${lay}`] = { logo, rows, cta, disc };
+}
+function applyCopy(slot, c) {
+  const num = t => t.split(',').map(Number);
+  if (c.logo) slot.logo = num(c.logo); else delete slot.logo;
+  const old = slot.rows || [];
+  slot.rows = c.rows.split(';').map(r => {
+    const [k, x, y, w, h, sz, al] = r.split(',');
+    const o = { k: ROW[k], x: +x, y: +y, w: +w, h: +h, sz: r1(+sz), al, lines: Math.max(1, Math.round(+h / (+sz * 1.06))) };
+    const prev = old.find(q => q.k === o.k);
+    if (prev?.clamp) o.clamp = prev.clamp;
+    return o;
+  });
+  if (c.cta) { const [x, y, w, h, rad, pad, sz, stack] = num(c.cta); slot.cta = { b: [x, y, w, h], rad, pad, sz: r1(sz), stack }; } else delete slot.cta;
+  if (c.disc) { const [x, bottom, w, sz, al] = c.disc.split(','); slot.disc = { x: +x, bottom: +bottom, w: +w, sz: r1(+sz), al }; } else delete slot.disc;
+}
+// 기본 문구: 보드마다 Figma 템플릿에 들어간 문구 그대로 (헤드카피 길이가 사이즈마다 다름)
+const ptext = {};
+for (const line of fs.readFileSync(new URL('./figma-pslot-text-2026-11-18.txt', import.meta.url), 'utf8').split('\n')) {
+  if (!line.trim() || line.startsWith('#')) continue;
+  let [name, eyebrow, headline, subcopy] = line.split('|');
+  const lay = name.endsWith('@h') ? 'h' : 'v'; name = name.replace(/@h$/, '');
+  const ph = {}; for (const [k, v] of Object.entries({ eyebrow, headline, subcopy })) if (v) ph[k] = v.replace(/\\n/g, '\n');
+  ptext[`${name}|${lay}`] = ph;
+}
+let copied = 0, texted = 0;
 const out = {}; const report = [];
 for (const [ch, ps] of Object.entries(all)) {
   if (!SLOT_DATA[ch]) { report.push(`unknown channel: ${ch}`); continue; }
@@ -18,6 +53,10 @@ for (const [ch, ps] of Object.entries(all)) {
   out[ch] = SLOT_DATA[ch].filter(s => ps[s.key] ? true : (report.push(`no product slot board: ${s.key}`), false)).map(s => {
     const [layout, icon, boxes] = ps[s.key];
     const { art, fades, ...copy } = s;
+    const c = pcopy[`${s.key.replace(/-2$/, '')}|${layout}`];
+    if (c && !copy.noCopy) { applyCopy(copy, c); copied++; }
+    const ph = ptext[`${s.key.replace(/-2$/, '')}|${layout}`];
+    if (ph && !copy.noCopy) { copy.ph = ph; texted++; }
     return { ...copy, layout, icon, boxes };
   });
 }
@@ -30,4 +69,4 @@ const head = `/**
  */
 export const SLOT_DATA_PSLOT = `;
 fs.writeFileSync(new URL('../../public/lib/channelSlotDataSlot.js', import.meta.url), head + JSON.stringify(out) + ';\n');
-console.log(report.join('\n') || 'all matched'); console.log(Object.entries(out).map(([k, v]) => `${k}:${v.length} (v ${v.filter(s => s.layout === 'v').length} · h ${v.filter(s => s.layout === 'h').length})`).join(' '));
+console.log(report.join('\n') || 'all matched'); console.log('copy layout from _Product Slot templates:', copied, '· placeholder text:', texted); console.log(Object.entries(out).map(([k, v]) => `${k}:${v.length} (v ${v.filter(s => s.layout === 'v').length} · h ${v.filter(s => s.layout === 'h').length})`).join(' '));
