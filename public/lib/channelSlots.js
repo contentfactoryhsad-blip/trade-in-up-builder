@@ -507,8 +507,28 @@ export const logosReady = () => Promise.all(Object.keys(LOGOS).map(id => {
  * opts.ground: 올린 이미지 — 판 바탕을 이 색(이미지 가장자리 평균)으로 깔고, 빈 곳은 거울 늘이기(drawArtMirrored), KV 용 그라데이션(fades)은 뺀다 (블프와 같다)
  * opts.darkInk: Dark 글자 모드 글자색 (없으면 #000) — 올린 이미지는 블프처럼 #111
  */
+/**
+ * 키비 위치·크기 손보기 (블프 페이지 빌더 Image Position 과 같다) — { x, y, scale }, 사이즈마다 따로.
+ * scale 은 KV(슬롯형은 아이콘) 가운데를 기준으로, x · y 는 배너 px. 슬롯형은 아이콘과 칸을 함께 움직인다.
+ */
+export function adjustArt(slot, a) {
+  if (!a || (!a.x && !a.y && (a.scale ?? 1) === 1)) return slot;
+  const sc = a.scale ?? 1, dx = a.x || 0, dy = a.y || 0;
+  const base = slot.icon || slot.art;
+  if (!base) return slot;
+  const cx = base[0] + base[2] / 2, cy = base[1] + base[2] / 2;
+  const mv = ([x, y, sz, ...rest]) => [cx + (x - cx) * sc + dx, cy + (y - cy) * sc + dy, sz * sc, ...rest.map(r => r * sc)];
+  const out = { ...slot };
+  if (slot.art) out.art = mv(slot.art);
+  if (slot.icon) out.icon = mv(slot.icon);
+  if (slot.boxes) out.boxes = slot.boxes.map(mv);
+  return out;
+}
+
 export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (slot.noCopy) slot = { ...slot, logo: null, rows: [], cta: null, disc: null };
+  // 올린 이미지는 블프 판 자리(UPLOAD_ART)가 기준
+  if (opts.kvAdjust) slot = adjustArt(opts.ground && UPLOAD_ART[slot.key] ? { ...slot, art: UPLOAD_ART[slot.key], uploadAdjusted: 1 } : slot, opts.kvAdjust);
   const { w: W, h: H } = slot;
   const show = cs.show;
   // 비운 칸은 그 줄을 뺀다 (체크를 끈 것과 같다). 기본 문구 그대로면 자리 표시 문구로 그린다 —
@@ -529,7 +549,7 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   ctx.fillRect(0, 0, W, H);
   if (slot.boxes) drawProductSlot(ctx, slot, opts);
   // 올린 이미지는 블프 빌더 판 자리로 (uploadArt.js — Safe Area 가 사이즈마다 거의 다 보인다)
-  else if (art && slot.art && opts.ground) drawArtMirrored(ctx, art, UPLOAD_ART[slot.key] || slot.art, W, H);
+  else if (art && slot.art && opts.ground) drawArtMirrored(ctx, art, (slot.uploadAdjusted ? slot.art : UPLOAD_ART[slot.key]) || slot.art, W, H);
   else if (art && slot.art) {
     // KV — Figma 처럼 판 바탕색 단색 위에 원형 마스크로 녹인 컷 (그라데이션 레이어 없음)
     ctx.fillStyle = opts.kvGround || '#b0a79d';

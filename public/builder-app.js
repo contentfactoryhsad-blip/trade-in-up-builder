@@ -22,6 +22,7 @@ import { DEFAULT_FX, cloneFx, createBackground, drawComposite } from './lib/comp
 import { orderQuad, warpInfill, colorField, detectObjects, adjustBackground, glowLayer } from './lib/infill.js';
 import { slotsForChannel, drawSlot, drawBox, iconWithRim, logosReady, onIconLoad } from './lib/channelSlots.js';
 import { newCopyState, renderCopyPanel, bindCopyPanel } from './lib/channelCopy.js';
+import { KV_ADJUST, kvAdj, adjFor, renderAdjustField, bindAdjust } from './lib/kvAdjust.js';
 
 /**
  * 팔레트 줄 — Trade In / Trade Up 두 버전이 같은 목록·배치를 쓴다 (아이콘 화살표만 다르다).
@@ -737,9 +738,41 @@ function renderSlots() {
       if (!c) return;
       const ctx = c.getContext('2d');
       ctx.setTransform(c.width / sl.w, 0, 0, c.height / sl.h, 0, 0);
-      drawSlot(ctx, sl, comp, state.copy, opts);
+      drawSlot(ctx, sl, comp, state.copy, { ...opts, kvAdjust: adjFor(board, sl.key) });
+      c.parentElement.classList.toggle('adj-on', KV_ADJUST && kvAdj.sel === sl.key);
     });
   });
+}
+/** 고른 사이즈 테두리만 — 다시 그리지 않는다 */
+function markSel() {
+  document.querySelectorAll('#slots canvas[data-slot]').forEach(c => c.parentElement.classList.toggle('adj-on', KV_ADJUST && kvAdj.sel === c.dataset.slot));
+}
+/** 키비 위치를 손볼 때 그 사이즈 하나만 다시 그린다 (프레임에 한 번) */
+let oneQueued = null;
+function renderSlotOne(key) {
+  if (!key) return;
+  const first = oneQueued == null;
+  oneQueued = key;
+  if (!first) return;
+  requestAnimationFrame(() => {
+    const k = oneQueued;
+    oneQueued = null;
+    const hit = findAsset(state.selectedId);
+    const board = hit ? boardOf(hit) : null;
+    const c = document.querySelector(`#slots canvas[data-slot="${CSS.escape(k)}"]`);
+    const sl = board == null ? null : channelSlots(board).find(s => s.key === k);
+    if (!c || !sl) return;
+    const { comp, opts } = slotDrawArgs(hit, board);
+    const ctx = c.getContext('2d');
+    ctx.setTransform(c.width / sl.w, 0, 0, c.height / sl.h, 0, 0);
+    drawSlot(ctx, sl, comp, state.copy, { ...opts, kvAdjust: adjFor(board, sl.key) });
+  });
+}
+/** Design 박스의 키비 Image Position 칸 — 프리뷰에서 고른 사이즈 (lib/kvAdjust.js) */
+function adjustField(hit) {
+  const board = boardOf(hit);
+  if (!KV_ADJUST || board == null) return '';
+  return renderAdjustField(board, kvAdj.sel ? channelSlots(board).find(s => s.key === kvAdj.sel) : null);
 }
 /** 지금 고른 매체의 사이즈 목록 — ALL 은 매체 순서대로 이어 붙인다 (미리보기·ZIP 이 같은 순서) */
 function channelSlots(board) {
@@ -782,7 +815,7 @@ function renderEdit() {
   const channel = state.step >= 2 && CHANNEL_ROWS.flat().find(c => c.key === state.channel);
   if (channel) {
     syncTextMode();
-    $('#editBody').innerHTML = renderCopyPanel(state.copy, channel);
+    $('#editBody').innerHTML = renderCopyPanel(state.copy, channel, adjustField(hit));
     return;
   }
   const { asset, group } = hit;
@@ -1803,6 +1836,33 @@ const editBody = $('#editBody');
 // Text mode · 로고 버튼은 copy 값을 바꾸고 첫 콜백을 부른다 — 그 값을 지금 판 종류 몫으로 남긴다
 bindCopyPanel(editBody, state.copy, () => { const k = textKind(); state.textModes[k] = state.copy.textMode; state.logoIds[k] = state.copy.logoId; renderEdit(); renderSlots(); }, () => renderSlots());
 
+// 키비 Image Position (블프 페이지 빌더와 같은 기능) — 프리뷰 사이즈를 누르면 고르고, Design 박스에서 이동·확대
+bindAdjust(editBody, () => {
+  const hit = findAsset(state.selectedId);
+  const board = hit ? boardOf(hit) : null;
+  return { board, slot: board == null || !kvAdj.sel ? null : channelSlots(board).find(s => s.key === kvAdj.sel) };
+}, ({ panel, draw }) => {
+  if (panel) renderEdit();
+  if (draw === 'one') renderSlotOne(kvAdj.sel);
+  else if (draw === 'all') renderSlots();
+  else if (draw === 'mark') markSel();
+});
+// #slots 는 캔버스 영역을 다시 그릴 때 새로 생겨서 문서에서 받는다
+if (KV_ADJUST) document.addEventListener('click', e => {
+  const c = e.target.closest('#slots canvas[data-slot]');
+  if (!c) {
+    // 프리뷰 빈 곳(사이즈 사이 · 캔버스 영역 바탕)을 눌러도 선택 해제 — 버튼·입력·그림은 빼고
+    if (!kvAdj.sel || !e.target.closest('#canvas') || e.target.closest('button, a, input, select, textarea, label, canvas, [data-channel]')) return;
+    kvAdj.sel = null;
+    renderEdit();
+    markSel();
+    return;
+  }
+  kvAdj.sel = kvAdj.sel === c.dataset.slot ? null : c.dataset.slot;
+  renderEdit();
+  markSel();
+});
+
 editBody.addEventListener('click', e => {
   // 기능 박스 펼치기/접기 — 다시 그리지 않고 클래스만 바꿔야 높이 전환이 보인다
   const head = e.target.closest('.tb-acc-head');
@@ -2360,7 +2420,7 @@ async function downloadSlots() {
       const c = document.createElement('canvas');
       c.width = sl.w;
       c.height = sl.h;
-      drawSlot(c.getContext('2d'), sl, comp, state.copy, { ...opts, imageOnly: sl.label === 'LG.com' });
+      drawSlot(c.getContext('2d'), sl, comp, state.copy, { ...opts, imageOnly: sl.label === 'LG.com', kvAdjust: adjFor(board, sl.key) });
       const blob = await new Promise(r => c.toBlob(r, 'image/png'));
       (state.channel === 'all' ? zip.folder(sl.label) : zip).file(`${name}.png`, blob);
       label.textContent = `${i + 1} / ${slots.length}`;

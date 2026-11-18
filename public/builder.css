@@ -385,6 +385,10 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-slot { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .tb-slot canvas { display: block; height: auto; border-radius: 0; box-shadow: 0 1px 3px rgb(0 0 0 / .12); background: #fff; }
 .tb-slot figcaption { font-size: 11px; color: #8A8078; }
+/* 키비 Image Position — 누를 수 있는 사이즈, 고른 사이즈는 브랜드색 테두리 (lib/kvAdjust.js) */
+.tb-slot canvas[data-slot] { cursor: pointer; }
+.tb-slot.adj-on canvas { outline: 2px solid var(--brand); outline-offset: 3px; }
+.tb-slot.adj-on figcaption { color: var(--brand); font-weight: 600; }
 .tb-slots-empty { margin: 0; padding: 24px 0; font-size: 13px; color: #8A8078; }
 .tb-slots-group { flex-basis: 100%; margin: 12px 0 -4px; font-size: 12px; font-weight: 600; color: #6B625B; text-align: center; }
 .tb-slots-group:first-child { margin-top: 0; }
@@ -393,6 +397,19 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .cc { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .cc-title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: var(--gray-900); }
 .cc-sub { margin: 0; font-size: 12px; color: var(--gray-400); }
+/* Copy / Design 두 묶음 — 앞 단계 .tb-acc 박스(Product & Shadow)와 같은 모양, 접었다 펼 수 있다 */
+.cc-group { border: 1px solid var(--gray-200); border-radius: 8px; background: #fff; transition: border-color .15s; }
+.cc-group:hover, .cc-group[open] { border-color: var(--gray-300); }
+.cc-group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px; cursor: pointer; list-style: none; user-select: none; }
+.cc-group-head::-webkit-details-marker { display: none; }
+.cc-group-text { display: flex; flex-direction: column; gap: 4px; }
+.cc-group-title { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+.cc-group[open] .cc-group-title { color: var(--brand); }
+.cc-group-desc { font-size: 12px; line-height: 1.6; color: var(--gray-500); }
+.cc-group-chev { flex-shrink: 0; margin-top: 1px; color: var(--gray-400); transition: transform .2s ease, color .15s; }
+.cc-group[open] .cc-group-chev { transform: rotate(180deg); color: var(--brand); }
+.cc-group-body { display: flex; flex-direction: column; gap: 16px; margin: 0 16px; padding: 14px 0 16px; border-top: 1px solid var(--gray-100); }
+.cc-group-body > .cc-section:first-child { border-top: 0; padding-top: 0; }
 .cc-field { display: flex; flex-direction: column; gap: 4px; }
 .cc-sub-field { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
 .cc-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -531,3 +548,24 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 /* 캔버스 미리보기 — 올린 정사각은 자르지 않고 가운데에 */
 .tb-preview-art.tb-upload-art { background: var(--gray-100); }
 .tb-preview-art.tb-upload-art > img { object-fit: contain; }
+
+/* Design › Image Position (lib/kvAdjust.js — 블프 페이지 빌더 NudgeField 와 같은 구성) */
+.kv-adj { gap: 8px; }
+.kv-empty { margin: 0; font-size: 12px; line-height: 1.5; color: var(--gray-400); }
+.kv-body { display: flex; align-items: center; gap: 14px; }
+.kv-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.kv-size { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--brand); }
+.kv-size span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv-close { border: 0; background: none; padding: 0 2px; font-size: 14px; line-height: 1; color: var(--gray-400); cursor: pointer; }
+.kv-close:hover { color: var(--gray-700); }
+.kv-pad { flex: none; display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 26px); gap: 2px; }
+.kv-arrow { display: flex; align-items: center; justify-content: center; border: 1px solid var(--gray-200); border-radius: 6px; background: #fff; color: var(--gray-500); cursor: pointer; transition: border-color .15s, color .15s; }
+.kv-arrow:hover { border-color: var(--gray-400); color: var(--gray-800, #2B2622); }
+.kv-scale { display: flex; flex-direction: column; gap: 4px; }
+.kv-scale-head { display: flex; justify-content: space-between; align-items: baseline; }
+.kv-scale input { width: 100%; margin: 0; accent-color: var(--brand); }
+.kv-scale-val { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--gray-500); }
+.kv-reset, .kv-reset-all { border: 0; background: none; padding: 0; font-size: 11px; font-weight: 500; color: var(--gray-400); cursor: pointer; }
+.kv-reset:hover:not(:disabled), .kv-reset-all:hover { color: var(--brand); }
+.kv-reset:disabled { color: var(--gray-300); cursor: default; }
+.kv-reset-all { align-self: flex-start; text-decoration: underline; }

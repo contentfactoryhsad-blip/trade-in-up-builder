@@ -17,9 +17,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
  * 칸을 비우면 그 줄은 미리보기·다운로드에서 빠진다 — 체크를 끈 것과 같다 (BF 빌더 2026-11-11 규칙)
  */
 export const COPY_PLACEHOLDER = {
-  eyebrow: 'Lorem ipsumdolor sit amet',
-  headline: 'Lorem ipsum dolor sit ametap consectetur',
-  subcopy: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+  eyebrow: 'Lorem ipsum dolor sit amet, consectetur',
+  headline: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit',
+  subcopy: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod',
   cta: 'Shop now',
   disclaimer: '*T&C’s apply',
   disclaimerMedia: '*T&C’s apply',
@@ -95,7 +95,11 @@ const iconStyle = cs => `${cs.icon.kind === 'none' ? 'solid' : cs.icon.kind}-${c
 const iconPreview = (id, style) => `
   <span class="cc-icon-prev${style === 'line-white' ? ' dim' : ''}">${id ? iconSvg(id, style, 30) : ''}</span>`;
 
-export function renderCopyPanel(cs, channel) {
+/** Copy / Design 접기 상태 — 다시 그려도 유지 */
+const GROUP_OPEN = { copy: true, design: true };
+
+/** designTop — Design 박스 맨 위에 넣을 칸 (키비 Image Position, lib/kvAdjust.js) */
+export function renderCopyPanel(cs, channel, designTop = '') {
   const f = flagsFor(channel.key);
   const touched = copyTouched(cs);
   const check = (name, on) => `<input type="checkbox" class="cc-check" data-cc-show="${name}"${on ? ' checked' : ''} />`;
@@ -104,21 +108,12 @@ export function renderCopyPanel(cs, channel) {
 
   return `
   <div class="cc">
-    <div>
-      <p class="cc-title">Copy</p>
-      <p class="cc-sub">Applies to every ${esc(channel.label)} size.</p>
-    </div>
+    <p class="cc-sub">Applies to every ${esc(channel.label)} size.</p>
 
-    <div class="cc-field">
-      <span class="cc-label">Text mode</span>
-      <div class="cc-mode">
-        ${['dark', 'light'].map(m => `
-          <button type="button" class="cc-mode-btn${(cs.textMode ?? 'light') === m ? ' on' : ''}" data-text-mode="${m}">
-            <span class="cc-mode-dot ${m}"></span>${m === 'light' ? 'Light' : 'Dark'}
-          </button>`).join('')}
-      </div>
-    </div>
-
+    <!-- Copy — 문구 (Reset 은 문구만 되돌린다) -->
+    <details class="cc-group" data-cc-group="copy"${GROUP_OPEN.copy ? ' open' : ''}>
+    <summary class="cc-group-head"><span class="cc-group-text"><span class="cc-group-title">Copy</span><span class="cc-group-desc">Text for every size. Edit a field to use your own text.</span></span><svg class="cc-group-chev" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+    <div class="cc-group-body">
     ${FIELDS.map(fd => {
       const off = fd.toggle ? !cs.show[fd.toggle] : false;
       const attrs = `data-copy="${fd.key}"${off ? ' disabled' : ''}`;
@@ -146,6 +141,26 @@ export function renderCopyPanel(cs, channel) {
           <input type="text" class="cc-input" data-copy="${d.key}" value="${esc(cs.copy[d.key])}"${d.max ? ` maxlength="${d.max}"` : ''}${!cs.show.disclaimer || !d.on ? ' disabled' : ''} />
         </label>`).join('')}
     </div>
+
+    <button type="button" class="cc-reset" data-copy-reset${touched ? '' : ' disabled'}>Reset to placeholder</button>
+    </div>
+    </details>
+
+    <!-- Design — 글자색 · 로고 · LG.com 인디케이터 · 아이콘 -->
+    <details class="cc-group" data-cc-group="design"${GROUP_OPEN.design ? ' open' : ''}>
+    <summary class="cc-group-head"><span class="cc-group-text"><span class="cc-group-title">Design</span><span class="cc-group-desc">Image position, text color, logo and LG.com extras.</span></span><svg class="cc-group-chev" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+    <div class="cc-group-body">
+    ${designTop}
+    <div class="cc-field">
+      <span class="cc-label">Text mode</span>
+      <div class="cc-mode">
+        ${['dark', 'light'].map(m => `
+          <button type="button" class="cc-mode-btn${(cs.textMode ?? 'light') === m ? ' on' : ''}" data-text-mode="${m}">
+            <span class="cc-mode-dot ${m}"></span>${m === 'light' ? 'Light' : 'Dark'}
+          </button>`).join('')}
+      </div>
+    </div>
+
 
     ${f.indicator ? `
     <div class="cc-inline">
@@ -200,7 +215,8 @@ export function renderCopyPanel(cs, channel) {
         </div>` : ''}
     </div>` : ''}
 
-    <button type="button" class="cc-reset" data-copy-reset${touched ? '' : ' disabled'}>Reset to placeholder</button>
+    </div>
+    </details>
   </div>`;
 }
 
@@ -246,6 +262,11 @@ function openCombo(root, cs, i, rerender) {
  * 구조가 바뀌는 것은 rerender
  */
 export function bindCopyPanel(root, cs, rerender, onInput = () => {}) {
+  // toggle 은 버블링이 없어 capture 로 받는다
+  root.addEventListener('toggle', e => {
+    const g = e.target.dataset?.ccGroup;
+    if (g) GROUP_OPEN[g] = e.target.open;
+  }, true);
   const syncReset = () => {
     const btn = root.querySelector('[data-copy-reset]');
     if (btn) btn.disabled = !copyTouched(cs);
