@@ -24,7 +24,7 @@ export function adjFor(board, key) {
   return isDefault(a) ? null : a;
 }
 
-/** 손본 사이즈가 하나라도 있나 (Reset all 버튼) */
+/** 손본 사이즈가 하나라도 있나 (Reset all 버튼 — 늘 보이고, 없으면 흐리게) */
 const anyAdjusted = board => Object.entries(kvAdj.vals).some(([k, a]) => k.startsWith(`${board}|`) && !isDefault(a));
 
 /** 이동 한 번 = 배너 긴 변의 1% (1920 히어로에서 약 20px — 블프 빌더 한 칸과 비슷) */
@@ -34,14 +34,14 @@ const arrow = (dx, dy, label, path) =>
   `<button type="button" class="kv-arrow" data-kv-step="${dx},${dy}" aria-label="${label}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="${path}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
 
 /** Design 박스 맨 위에 들어가는 Image Position 칸. slot = 프리뷰에서 고른 사이즈 (없으면 안내만) */
-export function renderAdjustField(board, slot) {
+export function renderAdjustField(board, slot, info = '') {
   if (!KV_ADJUST) return '';
   if (!slot) {
     return `
     <div class="cc-field kv-adj">
-      <span class="cc-label">Image Position</span>
+      <span class="cc-label kv-title">Image Position${info}</span>
       <p class="kv-empty">Click a size in the preview to move or scale its image.</p>
-      ${anyAdjusted(board) ? '<button type="button" class="kv-reset-all" data-kv-reset-all>Reset all sizes</button>' : ''}
+      <button type="button" class="kv-reset-all" data-kv-reset-all${anyAdjusted(board) ? '' : ' disabled'}>Reset all sizes</button>
     </div>`;
   }
   const a = kvAdj.vals[id(board, slot.key)] || { x: 0, y: 0, scale: 1 };
@@ -49,7 +49,7 @@ export function renderAdjustField(board, slot) {
   return `
     <div class="cc-field kv-adj">
       <div class="cc-label-row">
-        <span class="cc-label">Image Position</span>
+        <span class="cc-label kv-title">Image Position${info}</span>
         <button type="button" class="kv-reset" data-kv-reset${isDefault(a) ? ' disabled' : ''}>Reset</button>
       </div>
       <div class="kv-body">
@@ -64,7 +64,7 @@ export function renderAdjustField(board, slot) {
             <div class="kv-scale-head"><span class="cc-small">Scale</span><span class="kv-scale-val">${sc.toFixed(2)}×</span></div>
             <input type="range" min="${SCALE_MIN}" max="${SCALE_MAX}" step="${SCALE_STEP}" value="${sc}" data-kv-scale />
           </div>
-          ${anyAdjusted(board) ? '<button type="button" class="kv-reset-all" data-kv-reset-all>Reset all sizes</button>' : ''}
+          <button type="button" class="kv-reset-all" data-kv-reset-all${anyAdjusted(board) ? '' : ' disabled'}>Reset all sizes</button>
         </div>
       </div>
     </div>`;
@@ -83,11 +83,15 @@ export function bindAdjust(root, ctx, redraw) {
     const k = id(board, slot.key);
     return { board, slot, k, a: (kvAdj.vals[k] ||= { x: 0, y: 0, scale: 1 }) };
   };
-  // 패널 모양(Reset 활성 · Reset all 유무)이 바뀌었으면 패널까지, 아니면 그림만
+  // Reset · Reset all 은 늘 있다 — 켜고 끄기만 바꾸고 그림은 고른 사이즈 하나만
+  const syncButtons = (c, box) => {
+    const r = box?.querySelector('[data-kv-reset]'), all = box?.querySelector('[data-kv-reset-all]');
+    if (r) r.disabled = isDefault(c.a);
+    if (all) all.disabled = !anyAdjusted(c.board);
+  };
   const after = (c, box) => {
-    const resetOff = box?.querySelector('[data-kv-reset]')?.disabled;
-    const hasAll = !!box?.querySelector('[data-kv-reset-all]');
-    redraw({ panel: !box || resetOff !== isDefault(c.a) || hasAll !== anyAdjusted(c.board), draw: 'one' });
+    syncButtons(c, box);
+    redraw({ panel: !box, draw: 'one' });
   };
   root.addEventListener('click', e => {
     if (e.target.closest('[data-kv-close]')) { kvAdj.sel = null; redraw({ panel: true, draw: 'mark' }); return; }
@@ -115,13 +119,7 @@ export function bindAdjust(root, ctx, redraw) {
     c.a.scale = Math.round(Number(e.target.value) * 100) / 100;
     const box = e.target.closest('.kv-adj');
     box.querySelector('.kv-scale-val').textContent = `${c.a.scale.toFixed(2)}×`;
-    box.querySelector('[data-kv-reset]').disabled = isDefault(c.a);
+    syncButtons(c, box);
     redraw({ panel: false, draw: 'one' });
-  });
-  // 슬라이더를 놓으면 Reset all 유무만 맞춘다
-  root.addEventListener('change', e => {
-    if (!e.target.matches('[data-kv-scale]')) return;
-    const c = cur();
-    if (c && !!e.target.closest('.kv-adj').querySelector('[data-kv-reset-all]') !== anyAdjusted(c.board)) redraw({ panel: true, draw: null });
   });
 }

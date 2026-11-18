@@ -148,6 +148,8 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-edit-asset .meta { margin: 0; font-size: 12px; color: var(--gray-400); }
 .tb-edit-frame { position: relative; margin-top: 16px; aspect-ratio: 1; border-radius: 8px; overflow: hidden; }
 .tb-edit-frame img, .tb-edit-frame canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* 정적 그림 ↔ 실시간 합성(#frameView) — hidden 이 display:block 에 묻히지 않게 (합성이 그려지면 그림을 숨긴다) */
+.tb-edit-frame [hidden] { display: none; }
 /* 접이식 기능 박스 — 머리를 누르면 아래로 펼쳐진다 (grid 0fr→1fr 로 높이 전환) */
 .tb-acc { margin: 16px 20px 0; border: 1px solid var(--gray-200); border-radius: 8px; background: #fff; transition: border-color .15s; }
 .tb-acc:hover { border-color: var(--gray-300); }
@@ -280,6 +282,7 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 
 /* 2 단계(Image Edit) 안내 — CHANNEL 이름은 빼고, 안내 두 줄은 크게·검게 (채널 목록이 열린 3 단계는 그대로) */
 .tb-channels:has(#channelGate:not([hidden])) .tb-channels-label { display: none; }
+#channelBody .tb-channels-note { max-width: 600px; font-size: 13px; }
 #channelGate .tb-channels-note { max-width: 760px; font-size: 18.7px; line-height: 1.5; letter-spacing: -.015em; color: #111; }
 /* 안내 글씨에 맞춘 OK 버튼 */
 #channelGate .tb-channel-open { min-width: 96px; height: 40px; padding: 0 28px; font-size: 16px; }
@@ -503,6 +506,7 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .tb-box-opacity .label { color: var(--gray-600); }
 .tb-box-opacity .val { margin-left: auto; font-size: 11px; color: var(--gray-400); font-variant-numeric: tabular-nums; }
 .tb-box-opacity .link { font-size: 11px; }
+.tb-box input[data-darkness],
 .tb-box input[data-box-opacity] { width: 100%; accent-color: var(--brand); }
 
 /* UPLOAD IMAGE — 팔레트 맨 아래 (블프 빌더와 같은 모양). 상자는 팔레트 타일과 같은 140 × 76 */
@@ -566,6 +570,6 @@ a.tb-pill:not(.outline-brand):hover { border-color: var(--gray-400); }
 .kv-scale input { width: 100%; margin: 0; accent-color: var(--brand); }
 .kv-scale-val { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--gray-500); }
 .kv-reset, .kv-reset-all { border: 0; background: none; padding: 0; font-size: 11px; font-weight: 500; color: var(--gray-400); cursor: pointer; }
-.kv-reset:hover:not(:disabled), .kv-reset-all:hover { color: var(--brand); }
-.kv-reset:disabled { color: var(--gray-300); cursor: default; }
+.kv-reset:hover:not(:disabled), .kv-reset-all:hover:not(:disabled) { color: var(--brand); }
+.kv-reset:disabled, .kv-reset-all:disabled { color: var(--gray-300); cursor: default; }
 .kv-reset-all { align-self: flex-start; text-decoration: underline; }

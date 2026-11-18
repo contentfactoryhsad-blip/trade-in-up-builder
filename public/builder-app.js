@@ -94,11 +94,14 @@ const BG_COLORS = [
   { key: 'c5', label: '05', suffix: '-color-04' },
   { key: 'c6', label: '06', suffix: '-color-05' },
   { key: 'c7', label: '07', name: 'Eco', suffix: '-eco' },
+  // Test — 다크 톤 Darkness 시험용 (darkTestBg). 무대·그림자 색은 컬러 01 컷을 쓰고, 그림은 테스트 배경 + 코드 그라데이션 + 단상 레이어로 다시 그린다
+  { key: 'ct', label: 'Test', name: 'Test', suffix: '-color-01', test: true },
 ];
 
 /** 그 줄에서 고를 수 있는 칸 — Dark 톤에는 Standard·Eco 컷이 없어 01 Standard · 07 Eco 를 숨긴다.
  *  Product Slot 은 배경 컷이 구워진 칸만 (컬러가 4 개라 06 이 비어 Eco 가 06 번이 된다) */
 const bgColorsFor = groupKey => BG_COLORS.filter(c => !((c.key === 'c1' || c.key === 'c7') && toneOf(groupKey) === 'dark')
+  && !(c.test && !darkTestOn(groupKey))
   && !(groupKey === 'slot' && c.suffix && !manifest.has(`${state.version}-slot-v${c.suffix}`)));
 /** 그 줄에서 켜 보일 칸 — 고른 칸이 숨겨져 있으면 그 줄의 첫 칸 (Light 01 Standard · Dark 02) */
 const bgColorOf = groupKey => { const list = bgColorsFor(groupKey); return list.some(c => c.key === state.bgColor) ? state.bgColor : list[0].key; };
@@ -236,6 +239,7 @@ const findAsset = id => {
 // video 끝 ?v= — 영상을 바꾸면 숫자를 올린다 (브라우저가 옛 영상을 붙들고 있지 않게)
 const INFO = {
   product: { title: 'Product & Shadow', video: 'info/product-shadow.mp4?v=2', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then move, resize and add shadows to it freely — on the preview and in the Edit panel on the right.' }, // 크리스마스 빌더 Product image 설명 그대로
+  position: { title: 'Image Position', video: 'info/image-position.mp4?v=1', img: null, text: 'Adjust the key visual position for each size. Click a size in the preview, then move the key visual with the arrows and resize it with Scale. Reset puts it back where it was.' },
   slot: { title: 'Products', video: 'info/product-slot.mp4?v=4', img: null, text: 'Paste an LG.com product URL and the product image is fetched from the page for you. You can then adjust its size and place it in each box.' },
 };
 const infoDot = key => `<span class="tb-info" data-info="${key}" role="button" tabindex="0" aria-label="About ${esc(INFO[key].title)}">i</span>`;
@@ -293,6 +297,7 @@ const state = {
   open: new Set(['product']), // Product & Shadow 는 늘 펼쳐 둔다 (EDIT_SECTIONS fixed)
   // Product Slot 칸 투명도 — Background Color 아래 Box 슬라이더. null = 기본 80%
   box: { opacity: null },
+  darkness: 40, // 다크 톤 Darkness 조절바 (0~100) — 지금은 Test 컬러에만 (darkTestBg). 40 = PSD 샘플 그대로 (DARK_DEFAULT)
   fxOpen: false, // 고른 제품 줄 아래 Shadow 드롭다운을 펼쳤나
   guide: false, // 프리뷰에서 고른 제품에 크기 조절 상자를 띄웠나 (배경을 누르면 끈다)
   bg: null,
@@ -609,6 +614,7 @@ function channelPicker() {
               ${row.map(c => `<button type="button" class="tb-channel${state.channel === c.key ? ' on' : ''}" data-channel="${c.key}">${esc(c.label)}</button>`).join('')}
             </div>`).join('')}
         </div>
+        <p class="tb-channels-note">For LG.com, files are downloaded to match the image upload guide — every size is exported without copy, CTA, and indicators (icons and disclaimer included).</p>
       </div>
     </div>
     <div class="tb-slots" id="slots" hidden></div>`;
@@ -772,7 +778,7 @@ function renderSlotOne(key) {
 function adjustField(hit) {
   const board = boardOf(hit);
   if (!KV_ADJUST || board == null) return '';
-  return renderAdjustField(board, kvAdj.sel ? channelSlots(board).find(s => s.key === kvAdj.sel) : null);
+  return renderAdjustField(board, kvAdj.sel ? channelSlots(board).find(s => s.key === kvAdj.sel) : null, infoDot('position'));
 }
 /** 지금 고른 매체의 사이즈 목록 — ALL 은 매체 순서대로 이어 붙인다 (미리보기·ZIP 이 같은 순서) */
 function channelSlots(board) {
@@ -831,7 +837,7 @@ function renderEdit() {
             ${bgColorsFor(group.key).map((c, n) => {
               // 칸 그림 — 이 에셋(버전·톤)의 그 변형에서 잘라 둔 컬러 조각
               const sid = (c.key === 'c1' || c.suffix) ? plainId(asset.version, group.key, asset.base) + (c.suffix || '') : null;
-              const sw = sid && manifest.get(sid)?.swatch ? `${ASSET_DIR}/${sid}-swatch.jpg` : null;
+              const sw = c.test ? `${DARK_TEST_DIR}/swatch.jpg` : sid && manifest.get(sid)?.swatch ? `${ASSET_DIR}/${sid}-swatch.jpg` : null;
               return `
               <button type="button" role="radio" class="tb-bgcolor-item${bgColorOf(group.key) === c.key ? ' on' : ''}" aria-checked="${bgColorOf(group.key) === c.key}" data-bgcolor="${c.key}">
                 <span class="tb-bgcolor-dot${sw ? '' : ' empty'}"${sw ? ` style="background-image:url('${sw}')"` : ''}></span>
@@ -840,6 +846,7 @@ function renderEdit() {
             }).join('')}
           </div>
         </div>` : ''}
+      ${group.bgColors && state.step === 1 && toneOf(group.key) === 'dark' ? `<div class="tb-box tb-dark">${darkPanel()}</div>` : ''}
       ${asset.boxes && state.step === 1 ? `<div class="tb-box" id="boxControl">${boxPanel()}</div>` : ''}
     </div>
     ${asset.upload ? '' /* 올린 이미지는 완성본 — 제품·그림자 편집 없음 */ : EDIT_SECTIONS.map(sec => `
@@ -962,6 +969,219 @@ function boxPanel() {
       <button type="button" class="link" data-act="box-reset"${state.box.opacity === null ? ' hidden' : ''}>Reset</button>
     </div>
     <input type="range" min="0" max="100" step="1" value="${v}" data-box-opacity aria-label="Box opacity" />`;
+}
+
+/**
+ * Darkness 테스트 — "1102 정리/color bg psd/dark-3000x3000-sample.psd" 를 따라 다크 배경을 코드로 다시 그린다.
+ *   바닥 = 컬러 배경(bg.jpg), 그 위 = 가운데가 뚫린 타원 블랙 그라데이션 (PSD 그라데이션 칠을 맞춰 잰 값),
+ *   맨 위 = 단상 레이어 — 포토샵에서 단상(그림자 포함)을 흰 배경 · 검은 배경에 한 번씩 저장한 두 장
+ *   ("color bg psd/test bg white.png · black.png")으로 푼 두 장: k = (흰 − 검) / 255 (배경이 비치는 정도),
+ *   a = 검은 배경 그림 (단상 자체 색) — 몸통(body)과 바닥 반사(floor)로 나눠 둔다.
+ *   결과 = body + (floor + k × 배경) × (1 − 블랙) — 반사도 블랙에 같이 묻혀야 회색 얼룩이 안 뜬다.
+ *   아이콘은 따로 — 다크 컷 아이콘 있는 것 / 없는 것(basic-noicon) 다섯 컬러 짝으로 푼 <버전>-icon-{k,a}-{floor,body}.png.
+ *   floor(바닥 그림자·반사)는 블랙 아래, body(반투명 유리 몸통)는 단상 위. Without Icon 이면 안 얹는다
+ * Darkness 는 블랙 구멍 크기 — 0 = 블랙이 가장자리에만, 100 = 가장 어둡게. 불투명도는 그대로라 회색빛이 돌지 않는다.
+ * 지금은 Main Key Visual Horizontal 01 (Trade In · Up, With · Without Icon)만. 나머지 에셋은 단상 흰·검 PNG 가 오면
+ */
+const DARK_TEST_DIR = `${ASSET_DIR}/darktest`;
+const DARK_DEFAULT = 40; // Darkness 기본값 = PSD 샘플 그대로
+const DARK_TEST_BASES = new Set(['b1-01-01']);
+// PSD 그라데이션 (3000² 기준) — 가운데 · 반지름, 투명 0% 지점 · 블랙 100% 지점(반지름 비), 가운데점 곡선
+const DARK_GRAD = { cx: 1462, cy: 1544, rx: 1921, ry: 1603, r0: 0.206, r1: 0.84, mid: 0.603 };
+/** 그 줄에서 Test 칸을 보일까 — 다크 톤 · 레이어가 있는 에셋 · 아이콘 있는 컷 */
+function darkTestOn(groupKey) {
+  if (groupKey !== 'basic-01' || toneOf(groupKey) !== 'dark') return false;
+  // findAsset 은 쓰지 않는다 — groupsFor → assetId → bgColorsFor 로 다시 들어와 돌고 돈다. 고른 id 에 에셋 이름이 들었나로 본다
+  return [...DARK_TEST_BASES].some(b => (state.selectedId || '').includes(`-${b}-`));
+}
+const darkTestSel = () => bgColorOf('basic-01') === 'ct' && findAsset(state.selectedId)?.group.key === 'basic-01';
+const darkTest = { imgs: {}, canvas: null, key: '' };
+function darkTestImg(src) {
+  if (!darkTest.imgs[src]) {
+    darkTest.imgs[src] = loadImage(src).then(img => { darkTest.imgs[src] = img; scheduleDraw(); });
+  }
+  const v = darkTest.imgs[src];
+  return v instanceof HTMLImageElement ? v : null;
+}
+/**
+ * Darkness → 블랙 띠 (반지름은 PSD 타원 기준 비율). i0 = 투명이 끝나는 곳, i1 = 블랙 100%, soft = 끝 둥글리기 0~1
+ *   0 ~ 40 : 타원 전체를 키운다 (0 → 1.3 배, 40 = PSD 그대로)
+ *   40 ~ 100: 띠 폭은 PSD 그대로 두고 위치만 안으로 (i1 0.84 → 0.42). 0 ~ 40 과 같은 빠르기로 이어지고,
+ *             블랙 끝 둥글리기도 40 부터 100 까지 고르게 늘려 중간에 꺾이는 데가 없다
+ */
+function darkBand(d) {
+  const G = DARK_GRAD, W0 = G.r1 - G.r0;
+  if (d <= DARK_DEFAULT) { const sc = 1.3 - 0.3 * d / DARK_DEFAULT; return { i0: G.r0 * sc, i1: G.r1 * sc, soft: 0 }; }
+  const t = (d - DARK_DEFAULT) / (100 - DARK_DEFAULT);
+  const i1 = G.r1 + (0.42 - G.r1) * t;
+  return { i0: i1 - W0, i1, soft: t };
+}
+
+/**
+ * 아이콘 접지 — 뒤 단상처럼: 밑변에만 아주 얇고 진한 그림자 + 바닥에 옅은 반광 반사 (블랙 아래).
+ * 반사는 아이콘 몸통(a-body, 검은 바탕 위 아이콘 색)을 밑변 기준으로 뒤집어 아래로 갈수록 사라지게 더한다.
+ * 3000² 기준: x0~x1 = 아이콘 폭, bottom = 밑변
+ */
+const ICON_CONTACT = { 'b1-01-01': { x0: 1746, x1: 1982, bottom: 1784 } }; // a-body 에서 잰 아이콘 자리
+const ICON_REFLECT = { h: 70, alpha: 0.08, blur: 7 }; // 반사 길이(px) · 세기 · 흐림(px, 3000² 기준) // 반사 길이(px) · 세기
+function drawIconContact(g, f, iconBody) {
+  const base = findAsset(state.selectedId)?.asset.base, c = ICON_CONTACT[base];
+  if (!c) return;
+  const cx = (c.x0 + c.x1) / 2, half = (c.x1 - c.x0) / 2;
+  // 반사 — 뒤집은 아이콘을 아래로 갈수록 투명하게
+  const R = ICON_REFLECT, sw = c.x1 - c.x0;
+  const t = document.createElement('canvas');
+  t.width = Math.ceil(sw * f); t.height = Math.ceil(R.h * f);
+  const tg = t.getContext('2d');
+  tg.translate(0, t.height);
+  tg.scale(1, -1);
+  tg.filter = `blur(${R.blur * f}px)`; // 반광 — 또렷하지 않게
+  tg.drawImage(iconBody, c.x0, c.bottom - R.h, sw, R.h, 0, 0, t.width, t.height);
+  tg.filter = 'none';
+  tg.setTransform(1, 0, 0, 1, 0, 0);
+  tg.globalCompositeOperation = 'destination-in';
+  const fade = tg.createLinearGradient(0, 0, 0, t.height);
+  fade.addColorStop(0, 'rgba(0,0,0,1)');
+  fade.addColorStop(1, 'rgba(0,0,0,0)');
+  tg.fillStyle = fade;
+  tg.fillRect(0, 0, t.width, t.height);
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = R.alpha;
+  g.drawImage(t, c.x0 * f, c.bottom * f);
+  g.restore();
+  // 그림자 — 밑변에 붙은 얇고 진한 선 (양 끝은 흐리게)
+  g.save();
+  g.translate(cx * f, c.bottom * f);
+  g.scale(half * 0.96 * f, 6 * f);
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+  gr.addColorStop(0, 'rgba(0,0,0,0.9)');
+  gr.addColorStop(0.6, 'rgba(0,0,0,0.75)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(-1, -1, 2, 2);
+  g.restore();
+}
+
+/**
+ * 다크 아이콘 하모나이즈 — 라이트 아이콘 그대로면 다크 배경에서 혼자 밝고 하얘 보여서,
+ * 배경 컬러(단상 주변 평균, 밝기는 빼고 색만)를 amount 만큼 곱해 물들이고 dim 만큼 낮춘다.
+ * a-body 는 검은 바탕 위 아이콘 색이라 곱해도 아이콘 밖은 0 그대로
+ */
+const ICON_HARMONY = { amount: 0.1, dim: 0.95 }; // 색 10% · 밝기 −5%
+const harmony = { key: null, canvas: null };
+function harmonizedIcon(iconBody, bg, w, h) {
+  const key = `${iconBody.src}|${bg.src}|${ICON_HARMONY.amount}|${ICON_HARMONY.dim}`;
+  if (harmony.key === key) return harmony.canvas;
+  // 배경 색 — 단상 주변(3000² 기준 1100~2100 × 900~1700) 평균을 가장 밝은 채널 = 1 로
+  const s = document.createElement('canvas');
+  s.width = s.height = 1;
+  const sg = s.getContext('2d', { willReadFrequently: true });
+  sg.drawImage(bg, 1100 * bg.naturalWidth / 3000, 900 * bg.naturalHeight / 3000, 1000 * bg.naturalWidth / 3000, 800 * bg.naturalHeight / 3000, 0, 0, 1, 1);
+  const [r, gg, b] = sg.getImageData(0, 0, 1, 1).data;
+  const m = Math.max(r, gg, b, 1);
+  const { amount: A, dim: D } = ICON_HARMONY;
+  const ch = v => Math.round(255 * D * (1 - A + A * v / m));
+  const c = harmony.canvas || (harmony.canvas = document.createElement('canvas'));
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.globalCompositeOperation = 'source-over';
+  g.drawImage(iconBody, 0, 0, w, h);
+  g.globalCompositeOperation = 'multiply';
+  g.fillStyle = `rgb(${ch(r)},${ch(gg)},${ch(b)})`;
+  g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'source-over';
+  harmony.key = key;
+  return c;
+}
+
+/** Test 컬러를 골랐으면 다시 그린 배경 { img, w, h, shade } — 아니면 null (그림이 아직이면 컬러 01 컷 그대로) */
+function darkTestBg() {
+  if (!state.bg || !darkTestSel()) return null;
+  const a = findAsset(state.selectedId).asset;
+  if (!DARK_TEST_BASES.has(a.base)) return null;
+  const bg = darkTestImg(`${DARK_TEST_DIR}/bg.jpg`);
+  // 단상은 Trade In · Up 공통, 아이콘은 버전마다 (Without Icon 이면 안 얹는다)
+  const L = name => darkTestImg(`${DARK_TEST_DIR}/${name}.png`);
+  const k = L(`${a.base}-k`), body = L(`${a.base}-body`), floor = L(`${a.base}-floor`);
+  const icon = state.noIcon ? null : ['k-floor', 'a-floor', 'k-body', 'a-body'].map(n => L(`${a.version}-icon-${n}`));
+  if (!bg || !k || !body || !floor || (icon && icon.some(x => !x))) return null;
+  const { w, h } = state.bg;
+  const key = `${a.version}-${a.base}:${state.darkness}:${!!icon}`;
+  if (darkTest.key !== key) {
+    const c = darkTest.canvas || (darkTest.canvas = document.createElement('canvas'));
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.globalCompositeOperation = 'source-over';
+    g.drawImage(bg, 0, 0, w, h);
+    // 단상 그림자(곱하기) · 바닥 반사(더하기) — 블랙 아래. 반사가 블랙 위에 남으면 어두운 데서 회색 얼룩으로 뜬다
+    g.globalCompositeOperation = 'multiply';
+    g.drawImage(k, 0, 0, w, h);
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(floor, 0, 0, w, h);
+    // 아이콘이 바닥에 드리우는 그림자 · 반사도 블랙 아래 (아이콘이 떠 보이지 않게)
+    if (icon) {
+      g.globalCompositeOperation = 'multiply';
+      g.drawImage(icon[0], 0, 0, w, h);
+      g.globalCompositeOperation = 'lighter';
+      g.drawImage(icon[1], 0, 0, w, h);
+      g.globalCompositeOperation = 'source-over';
+      drawIconContact(g, w / 3000, icon[3]);
+    }
+    g.globalCompositeOperation = 'source-over';
+    // 블랙 — 띠 위치·모양은 darkBand
+    const { i0, i1, soft } = darkBand(state.darkness);
+    const G = DARK_GRAD, f = w / 3000;
+    g.save();
+    g.translate(G.cx * f, G.cy * f);
+    g.scale(G.rx * f, G.ry * f);
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, i1);
+    const pow = Math.log(0.5) / Math.log(G.mid);
+    const alpha = r => {
+      const u = Math.min(1, Math.max(0, (r - i0) / (i1 - i0))) ** pow;
+      return u + soft * (u * u * (3 - 2 * u) - u); // 블랙에 닿는 끝을 둥글린다
+    };
+    const from = Math.max(0, i0);
+    grad.addColorStop(0, `rgba(0,0,0,${alpha(0).toFixed(4)})`);
+    for (let i = 0; i <= 32; i++) {
+      const r = from + (i1 - from) * i / 32;
+      grad.addColorStop(r / i1, `rgba(0,0,0,${alpha(r).toFixed(4)})`);
+    }
+    g.fillStyle = grad;
+    g.fillRect(-4, -4, 8, 8);
+    g.restore();
+    // 단상 몸통 — 블랙 위
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(body, 0, 0, w, h);
+    // 아이콘 몸통 — 반투명 유리라 뒤(단상·배경)가 비친다: 곱하고 더한다
+    if (icon) {
+      g.globalCompositeOperation = 'multiply';
+      g.drawImage(icon[2], 0, 0, w, h);
+      g.globalCompositeOperation = 'lighter';
+      g.drawImage(harmonizedIcon(icon[3], bg, w, h), 0, 0, w, h);
+    }
+    g.globalCompositeOperation = 'source-over';
+    darkTest.key = key;
+  }
+  // data · shade(제품 그림자 색을 고르는 배경 픽셀)는 컬러 01 컷 것을 그대로 — 빠지면 drawComposite 가 멈춘다
+  return { img: darkTest.canvas, w, h, data: state.bg.px.data, shade: state.bg.px.shade };
+}
+
+/**
+ * Darkness — 다크 톤만, Background Color 아래. 0 = 가장자리 블랙이 조금, 100 = 가장 어둡게.
+ * 아직 그리기는 없다 — 업체에서 블랙을 뺀 컬러 레이어가 오면 블랙 그라데이션을 코드로 그려
+ * 값만큼 가운데 구멍을 줄인다 (불투명도를 낮추면 회색빛이 돌아서 크기로 조절, 가장자리는 부드러운 곡선)
+ */
+function darkPanel() {
+  const v = state.darkness;
+  return `
+    <p class="tb-acc-item-label">Darkness</p>
+    <p class="hint">Set how far the dark edge reaches in. Works on the Test color for now.</p>
+    <div class="tb-box-opacity">
+      <span class="label">Darkness</span>
+      <span class="val" id="darknessVal">${v}</span>
+    </div>
+    <input type="range" min="0" max="100" step="1" value="${v}" data-darkness aria-label="Darkness" />`;
 }
 
 /** Scene Color 박스 안 — studio.html 의 Screen infill / Color mood / Background objects 와 같은 구성. */
@@ -1300,7 +1520,7 @@ function paint(ctx) {
       };
     });
   const boxes = inBox && findAsset(state.selectedId)?.asset.boxes;
-  drawComposite(ctx, coloredBackground() || state.bg.px, items, {
+  drawComposite(ctx, darkTestBg() || coloredBackground() || state.bg.px, items, {
     // 화면 빛은 배경 위·그림자와 제품 아래에 번진다. Slot 칸도 배경 바로 위·제품 아래 (무대 컷에는 칸이 없다 — Box 탭 설정대로 그린다)
     afterBackground: c => {
       if (boxes) drawBoxes(c, boxes);
@@ -1904,6 +2124,7 @@ editBody.addEventListener('click', e => {
       b.classList.toggle('on', on);
       b.setAttribute('aria-checked', String(on));
     });
+    update(); // 같은 컷(컬러 01 ↔ Test)이면 그림만 다시
     return;
   }
 
@@ -2026,6 +2247,12 @@ editBody.addEventListener('input', e => {
     return;
   }
   if (t.id === 'eraseSize') { state.eraseSize = Number(t.value); update(); return; }
+  if (t.hasAttribute('data-darkness')) {
+    state.darkness = Number(t.value);
+    $('#darknessVal').textContent = t.value;
+    if (darkTestSel()) scheduleDraw();
+    return;
+  }
   if (t.hasAttribute('data-box-opacity')) {
     state.box.opacity = Number(t.value) / 100;
     $('#boxOpacityVal').textContent = `${t.value}%`;
