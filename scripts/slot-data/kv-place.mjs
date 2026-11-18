@@ -3,7 +3,7 @@
 // figma-kv-*.txt (보드 이름 x y 한변, 보드마다 @01-01 처럼 나눔) 의 값으로 figma-main-key-visual(-02).json 의 art 만 바꿔
 // figma-main-key-visual-<보드>.json 을 쓰고, merge.mjs 로 public/lib/channelSlotData*.js 를 다시 만든다.
 // 카피 자리(logo · rows · cta · disc)는 figma-copy-*.txt (Templates & Assets › External Banner templates_Jun 을 쓴 보드에서 읽은 값)로 덮는다
-//   — LG.com 은 템플릿을 바꾸지 않아 크리스마스 빌더 값 그대로. 그라데이션(fades)은 빌더가 원형 마스크로 그려서 쓰지 않는다.
+//   — LG.com 은 보드별 figma-copy-lgcom-<보드>.txt. 그라데이션(fades)은 빌더가 원형 마스크로 그려서 쓰지 않는다.
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 const dir = 'scripts/slot-data';
@@ -23,6 +23,16 @@ for (const line of fs.readFileSync(`${dir}/figma-copy-2026-11-18.txt`, 'utf8').s
   const [key, logo, rows, cta, disc] = line.split('|');
   (copy[key] ||= []).push(logo === '-' ? null : { logo, rows, cta, disc });
 }
+// LG.com 은 보드마다 figma-copy-lgcom-<보드>.txt (LG.com Banner templates_Jun — 보드별로 조금씩 다름)
+const lgcopy = {};
+for (const b of ['01-01', '01-02', '02-01', '02-02']) {
+  lgcopy[b] = {};
+  for (const line of fs.readFileSync(`${dir}/figma-copy-lgcom-${b}.txt`, 'utf8').split('\n')) {
+    if (!line.trim() || line.startsWith('#')) continue;
+    const [key, logo, rows, cta, disc] = line.split('|');
+    lgcopy[b][key] = { logo, rows, cta, disc };
+  }
+}
 const ROW = { E: 'eyebrow', H: 'headline', S: 'subcopy' };
 function applyCopy(slot, c, old) {
   const num = t => t.split(',').map(Number);
@@ -34,10 +44,10 @@ function applyCopy(slot, c, old) {
     if (prev?.clamp) o.clamp = prev.clamp;
     return o;
   }) : [];
-  if (c.cta) { const [x, y, w, h, rad, pad, sz, stack] = num(c.cta); slot.cta = { b: [x, y, w, h], rad, pad, sz: r1(sz), stack }; } else delete slot.cta;
+  if (c.cta) { const [x, y, w, h, rad, pad, sz, stack] = num(c.cta); const round = slot.cta?.round; slot.cta = { b: [x, y, w, h], rad, pad, sz: r1(sz), stack }; if (round) slot.cta.round = round; } else if (!slot.key.startsWith('lgcom')) delete slot.cta; // LG.com 동그란 화살표 CTA(글자 없음)는 못 읽어서 그대로
   if (c.disc) { const [x, bottom, w, sz, al] = c.disc.split(','); slot.disc = { x: +x, bottom: +bottom, w: +w, sz: r1(+sz), al }; } else delete slot.disc;
 }
-function patchCopy(file, name) {
+function patchCopy(file, name, board) {
   const src = fs.readFileSync(file, 'utf8');
   const at = src.indexOf(`export const ${name} = `);
   const data = JSON.parse(src.slice(at + `export const ${name} = `.length).replace(/;\s*$/, ''));
@@ -46,7 +56,7 @@ function patchCopy(file, name) {
     const base = slot.key.replace(/-\d+$/, '').replace(/^(.*x\d+)-\d$/, '$1');
     const k = copy[slot.key] ? slot.key : base;
     const i = seen[k] = (seen[k] ?? -1) + 1;
-    const c = copy[k]?.[i];
+    const c = lgcopy[board][slot.key] || copy[k]?.[i];
     if (!c || slot.noCopy) continue;
     applyCopy(slot, c, { ...slot });
     n++;
@@ -73,5 +83,5 @@ for (const [b, base, out, name] of BOARDS) {
   fs.writeFileSync(jf, JSON.stringify(data));
   console.log(b, 'missing:', missing.join(',') || 'none');
   console.log(execFileSync('node', [`${dir}/merge.mjs`, '../11 Christmas/public/lib/channelSlotData.js', jf, out, name, `Main Key Visual ${b}`]).toString().trim());
-  console.log('copy layout from templates:', patchCopy(out, name));
+  console.log('copy layout from templates:', patchCopy(out, name, b));
 }

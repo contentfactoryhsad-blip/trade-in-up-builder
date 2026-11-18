@@ -125,7 +125,7 @@ META-1080x1080@h|Lorem ipsum dolor sit amet, consectetur|Lorem ipsum dolor sit a
 twitch-450x350@h|Lorem ipsum dolor sit amet|Lorem ipsum dolor sit amet, consectetur adipiscing elit|Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod
 twitch-970x250@h|Lorem ipsum dolor sit amet, consectetur|Lorem ipsum dolor sit amet, consectetur adipiscing elit|Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod
 twitch-300x250@h|Lorem ipsum dolor sit amet, consectetur|Lorem ipsum dolor sit amet, consectetur adipiscing elit|Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod
-twitch-640x100@h||Lorem ipsum dolor sit amet, consectetur|Limited-time offers, only on LG.com
+twitch-640x100@h||Lorem ipsum dolor sit amet, consectetur adipiscing elit|Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod
 twitch-728x90@h||Lorem ipsum dolor sit amet, consectetur adipiscing elit|Lorem ipsum dolor sit amet, consectetur adipiscing
 twitch-320x50@h||Lorem ipsum dolor sit amet, consectetur adipiscing elit|
 quantcast-336x280@h|Lorem ipsum dolor sit amet, consectetur|Lorem ipsum dolor sit amet, consectetur adipiscing elit|Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod

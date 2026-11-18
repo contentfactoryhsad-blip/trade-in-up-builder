@@ -439,8 +439,8 @@ export const MKV_TEXT = {
 "subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod"
 },
 "twitch-640x100": {
-"headline": "Lorem ipsum dolor sit amet, consectetur",
-"subcopy": "Limited-time offers, only on LG.com"
+"headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod"
 },
 "twitch-728x90": {
 "headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
@@ -774,30 +774,30 @@ export const MKV_TEXT = {
 "subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod"
 },
 "lgcom-ST0001-mo-720x960": {
-"eyebrow": "Lorem ipsumdolor sit amet",
-"headline": "Lorem ipsum dolor sit ametap consectetur",
-"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+"eyebrow": "Lorem ipsum dolor sit amet, consectetur",
+"headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod"
 },
 "lgcom-ST0001-pc-1920x720": {
-"eyebrow": "Lorem ipsumdolor sit amet",
-"headline": "Lorem ipsum dolor sit\nametap consectetur",
-"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+"eyebrow": "Lorem ipsum dolor sit amet, consectetur",
+"headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod"
 },
 "lgcom-ST0044-pc-342x228": {
 "headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit"
 },
 "lgcom-ST0044-mo-656x436": {
-"headline": "Lorem ipsum dolor sit ametap consectetur"
+"headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit"
 },
 "lgcom-ST0001-pc-1600x400": {
-"eyebrow": "Lorem ipsumdolor sit amet",
-"headline": "Lorem ipsum dolor sit\nametap consectetur",
+"eyebrow": "Lorem ipsum dolor sit amet, consectetur",
+"headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
 "subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
 },
 "lgcom-ST0001-mo-720x830": {
-"eyebrow": "Lorem ipsumdolor sit amet",
-"headline": "Lorem ipsum dolor sit ametap consectetur",
-"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+"eyebrow": "Lorem ipsum dolor sit amet, consectetur",
+"headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+"subcopy": "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod"
 },
 "lgcom-CM0001-gnb-373x190": {
 "headline": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",

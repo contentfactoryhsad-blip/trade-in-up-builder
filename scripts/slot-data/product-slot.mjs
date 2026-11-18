@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import { SLOT_DATA } from '../../public/lib/channelSlotData.js';
 const all = JSON.parse(fs.readFileSync(new URL('./figma-product-slot.json', import.meta.url), 'utf8'));
-// 카피 자리: Product Slot 보드는 _Product Slot 템플릿을 쓴다 → figma-pslot-copy-*.txt 로 덮는다 (줄을 못 읽은 판·LG.com 은 기존 값)
+// 카피 자리: Product Slot 보드는 _Product Slot 템플릿을 쓴다 → figma-pslot-copy-*.txt 로 덮는다 (줄을 못 읽은 판은 기존 값)
 const r1 = v => Math.round(v * 10) / 10;
 const ROW = { E: 'eyebrow', H: 'headline', S: 'subcopy' };
 const pcopy = {};
@@ -18,7 +18,7 @@ for (const line of fs.readFileSync(new URL('./figma-pslot-copy-2026-11-18.txt', 
   if (!line.trim() || line.startsWith('#')) continue;
   let [name, logo, rows, cta, disc] = line.split('|');
   const lay = name.endsWith('@h') ? 'h' : 'v'; name = name.replace(/@h$/, '');
-  if (!rows || name.startsWith('lgcom')) continue;
+  if (!rows) continue;
   pcopy[`${name}|${lay}`] = { logo, rows, cta, disc };
 }
 function applyCopy(slot, c) {
@@ -32,7 +32,7 @@ function applyCopy(slot, c) {
     if (prev?.clamp) o.clamp = prev.clamp;
     return o;
   });
-  if (c.cta) { const [x, y, w, h, rad, pad, sz, stack] = num(c.cta); slot.cta = { b: [x, y, w, h], rad, pad, sz: r1(sz), stack }; } else delete slot.cta;
+  if (c.cta) { const [x, y, w, h, rad, pad, sz, stack] = num(c.cta); const round = slot.cta?.round; slot.cta = { b: [x, y, w, h], rad, pad, sz: r1(sz), stack }; if (round) slot.cta.round = round; } else if (!slot.key.startsWith('lgcom')) delete slot.cta; // LG.com 동그란 화살표 CTA(글자 없음)는 못 읽어서 그대로
   if (c.disc) { const [x, bottom, w, sz, al] = c.disc.split(','); slot.disc = { x: +x, bottom: +bottom, w: +w, sz: r1(+sz), al }; } else delete slot.disc;
 }
 // 기본 문구: 보드마다 Figma 템플릿에 들어간 문구 그대로 (헤드카피 길이가 사이즈마다 다름)
