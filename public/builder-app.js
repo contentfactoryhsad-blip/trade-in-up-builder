@@ -23,6 +23,12 @@ import { orderQuad, warpInfill, colorField, detectObjects, adjustBackground, glo
 import { slotsForChannel, drawSlot, drawBox, iconWithRim, logosReady, onIconLoad } from './lib/channelSlots.js';
 import { newCopyState, renderCopyPanel, bindCopyPanel } from './lib/channelCopy.js';
 import { KV_ADJUST, kvAdj, adjFor, renderAdjustField, bindAdjust } from './lib/kvAdjust.js';
+import { logUsage, makeThumb, thumbName, newOutputId, uploadOutput } from './lib/usageClient.js';
+import { captureHubCountry, initCountryPicker } from './lib/countryPicker.js';
+// 허브에서 넘어온 국가(?hub_country=)를 저장하고 주소에서 지운다.
+// 허브를 거치지 않고 바로 들어왔으면 첫 화면에서 허브와 같은 팝업으로 묻는다 (블프·세일즈·크리스마스 빌더와 같다)
+captureHubCountry();
+initCountryPicker(document.querySelector('.header-actions'));
 
 /**
  * 팔레트 줄 — Trade In / Trade Up 두 버전이 같은 목록·배치를 쓴다 (아이콘 화살표만 다르다).
@@ -2577,6 +2583,18 @@ function zipReady() {
   return !!(state.step >= 2 && state.channel && window.JSZip && board != null && channelSlots(board).length);
 }
 
+/** 사용 기록 + 결과 썸네일 — 저장이 끝난 뒤, 실패해도 조용히 (관리자 화면 stats.html 이 본다. 크리스마스 빌더와 같다) */
+async function recordDownload(detail, pngs) {
+  const output = newOutputId();
+  await logUsage({ item: state.selectedId, detail, files: pngs.length, output });
+  const thumbs = [];
+  for (const p of pngs) {
+    const blob = await makeThumb(p.blob);
+    if (blob) thumbs.push({ name: p.name, blob });
+  }
+  await uploadOutput(output, thumbs);
+}
+
 /** 저장 — 브라우저 기본 다운로드. 저장 위치를 고르는 동안에도 받을 수 있게 주소는 60 초 뒤에 거둔다 (크리스마스 빌더와 같다) */
 function saveBlob(blob, name) {
   const url = URL.createObjectURL(blob);
@@ -2620,6 +2638,7 @@ async function downloadSlots() {
   exporting = true;
   btn.disabled = true;
   label.textContent = `0 / ${slots.length}`;
+  const pngs = []; // 다운로드가 끝난 뒤 썸네일로 올린다
   try {
     for (const [i, { sl, name }] of slots.entries()) {
       const c = document.createElement('canvas');
@@ -2628,9 +2647,11 @@ async function downloadSlots() {
       drawSlot(c.getContext('2d'), sl, comp, state.copy, { ...opts, imageOnly: sl.label === 'LG.com', kvAdjust: adjFor(board, sl.key) });
       const blob = await new Promise(r => c.toBlob(r, 'image/png'));
       (state.channel === 'all' ? zip.folder(sl.label) : zip).file(`${name}.png`, blob);
+      pngs.push({ name: thumbName(name), blob });
       label.textContent = `${i + 1} / ${slots.length}`;
     }
     saveBlob(await zip.generateAsync({ type: 'blob' }), `trade-in-up-${state.selectedId}-${state.channel}.zip`);
+    void recordDownload(state.channel, pngs);
   } finally {
     exporting = false;
     btn.disabled = false;
@@ -2649,7 +2670,10 @@ $('#download').addEventListener('click', async () => {
   out.height = state.bg.h;
   paint(out.getContext('2d'));
   const blob = await new Promise(r => out.toBlob(r, 'image/png'));
-  if (blob) saveBlob(blob, `trade-in-up-${state.selectedId}.png`);
+  if (blob) {
+    saveBlob(blob, `trade-in-up-${state.selectedId}.png`);
+    void recordDownload('visual', [{ name: thumbName(`trade-in-up-${state.selectedId}`), blob }]);
+  }
 });
 
 /**
