@@ -1129,7 +1129,8 @@ function darkBg() {
     grad.addColorStop(0, `rgba(0,0,0,${alpha(0).toFixed(4)})`);
     for (let i = 0; i <= 32; i++) {
       const r = from + (i1 - from) * i / 32;
-      grad.addColorStop(r / i1, `rgba(0,0,0,${alpha(r).toFixed(4)})`);
+      // 끝(r = i1)이 부동소수 오차로 1.0000000000000002 가 되면 addColorStop 이 오류를 내고 그림이 멈춘다 — 1 로 묶는다
+      grad.addColorStop(Math.min(1, r / i1), `rgba(0,0,0,${alpha(r).toFixed(4)})`);
     }
     g.fillStyle = grad;
     g.fillRect(-4, -4, 8, 8);
