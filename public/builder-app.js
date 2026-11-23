@@ -2586,8 +2586,8 @@ function zipReady() {
 
 /**
  * 받는 파일 이름과 통계에 남길 이름 — 팔레트에 보이는 이름 그대로 (크리스마스 빌더 fileStem 과 같은 생각).
- *   stem : trade-in-horizontal-product-01-light[-eco] · trade-up-product-slot-vertical-color-02 · trade-in-upload
- *   label: Trade In · Horizontal Product 01 · Light[ · Eco] — 통계 화면 '비주얼' 칸
+ *   stem : trade-in-horizontal-product-01-light-color-01 · trade-up-product-slot-vertical-eco · trade-in-upload
+ *   label: Trade In · Horizontal Product 01 · Light · Color 01 — 통계 화면 '비주얼' 칸
  */
 function assetNames() {
   const hit = findAsset(state.selectedId);
@@ -2600,7 +2600,8 @@ function assetNames() {
   if (group.tones) parts.push(TONES.find(t => t.key === toneOf(group.key))?.label || 'Light');
   if (group.bgColors) {
     const c = BG_COLORS.find(b => b.key === bgColorOf(group.key));
-    if (c && c.key !== 'c1') parts.push(c.name || `Color ${c.label}`);
+    // 01 Standard 도 다른 칸처럼 Color 01 — 07 Eco 만 이름으로
+    if (c) parts.push(c.key === 'c7' ? 'Eco' : `Color ${c.label}`);
   }
   const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return { stem: [ver.label, ...parts].map(slug).join('-'), label: [ver.label, ...parts].join(' · ') };
