@@ -2583,10 +2583,32 @@ function zipReady() {
   return !!(state.step >= 2 && state.channel && window.JSZip && board != null && channelSlots(board).length);
 }
 
+/**
+ * 받는 파일 이름과 통계에 남길 이름 — 팔레트에 보이는 이름 그대로 (크리스마스 빌더 fileStem 과 같은 생각).
+ *   stem : trade-in-horizontal-product-01-light[-eco] · trade-up-product-slot-vertical-color-02 · trade-in-upload
+ *   label: Trade In · Horizontal Product 01 · Light[ · Eco] — 통계 화면 '비주얼' 칸
+ */
+function assetNames() {
+  const hit = findAsset(state.selectedId);
+  if (!hit) return { stem: 'trade-in-up', label: 'Trade In-Up' };
+  const { asset, group } = hit;
+  const ver = VERSIONS.find(v => v.key === asset.version) || VERSIONS[0];
+  if (asset.upload) return { stem: `${ver.key === 'up' ? 'trade-up' : 'trade-in'}-upload`, label: `${ver.label} · Uploaded image` };
+  const parts = [asset.label];
+  if (asset.layouts) parts.push(asset.base === 'slot-h' ? 'Horizontal' : 'Vertical');
+  if (group.tones) parts.push(TONES.find(t => t.key === toneOf(group.key))?.label || 'Light');
+  if (group.bgColors) {
+    const c = BG_COLORS.find(b => b.key === bgColorOf(group.key));
+    if (c && c.key !== 'c1') parts.push(c.name || `Color ${c.label}`);
+  }
+  const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return { stem: [ver.label, ...parts].map(slug).join('-'), label: [ver.label, ...parts].join(' · ') };
+}
+
 /** 사용 기록 + 결과 썸네일 — 저장이 끝난 뒤, 실패해도 조용히 (관리자 화면 stats.html 이 본다. 크리스마스 빌더와 같다) */
 async function recordDownload(detail, pngs) {
   const output = newOutputId();
-  await logUsage({ item: state.selectedId, detail, files: pngs.length, output });
+  await logUsage({ item: assetNames().label, detail, files: pngs.length, output });
   const thumbs = [];
   for (const p of pngs) {
     const blob = await makeThumb(p.blob);
@@ -2650,7 +2672,7 @@ async function downloadSlots() {
       pngs.push({ name: thumbName(name), blob });
       label.textContent = `${i + 1} / ${slots.length}`;
     }
-    saveBlob(await zip.generateAsync({ type: 'blob' }), `trade-in-up-${state.selectedId}-${state.channel}.zip`);
+    saveBlob(await zip.generateAsync({ type: 'blob' }), `${assetNames().stem}-${state.channel}.zip`);
     void recordDownload(state.channel, pngs);
   } finally {
     exporting = false;
@@ -2671,8 +2693,9 @@ $('#download').addEventListener('click', async () => {
   paint(out.getContext('2d'));
   const blob = await new Promise(r => out.toBlob(r, 'image/png'));
   if (blob) {
-    saveBlob(blob, `trade-in-up-${state.selectedId}.png`);
-    void recordDownload('visual', [{ name: thumbName(`trade-in-up-${state.selectedId}`), blob }]);
+    const { stem } = assetNames();
+    saveBlob(blob, `${stem}.png`);
+    void recordDownload('visual', [{ name: thumbName(stem), blob }]);
   }
 });
 
