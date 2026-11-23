@@ -252,7 +252,8 @@ function drawArtMirrored(ctx, art, [ax, ay, as], W, H) {
 
 /**
  * Product Slot 판 — 배경 컬러를 깔고, 칸(흰 둥근 사각형, 불투명도 SLOT_ALPHA)과 칸 안 제품, 그 위에 아이콘을 Figma 자리대로 그린다 (칸은 아이콘 아래 레이어).
- *   slot.icon  : 아이콘 컴포넌트 인스턴스 [x, y, 한 변] — 컴포넌트 2000² 안에서 아이콘 그림(opts.icon)이 놓이는 자리가 PSLOT_ICON
+ *   slot.icon  : 아이콘 컴포넌트 인스턴스 [x, y, 한 변] — 컴포넌트 2000² 안에서 아이콘 그림(opts.icons[slot.layout])이 놓이는 자리가 PSLOT_ICON
+ *                (아이콘 그림은 판 배치마다 — 세로형 v · 가로형 h 슬롯 컷에 배치된 각도 그대로)
  *   slot.boxes : [x, y, 한 변, 모서리] — 제품은 칸 짧은 변의 BOX_PAD 만큼 사방을 비우고 비율대로 가운데 (빌더 캔버스와 같다)
  *   opts.products[i] : i 번 칸 제품 { img, w, h } (없으면 빈 칸), opts.bg : 배경 컬러, opts.bgImg : 배경 이미지 (판에 cover 로 깐다)
  *   opts.box : { alpha, glass } — Box 탭 설정 (builder-app boxLook). 없으면 흰 80%. glass 면 drawGlassBox
@@ -360,7 +361,7 @@ export function drawBox(ctx, x, y, s, r, look) {
   ctx.restore();
 }
 
-export const PSLOT_ICON = [330.2, 294.4, 1339.6, 1491.2]; // 컴포넌트 이미지 채우기(source/1102 정리/<in|up> icon-fixed.png · -eco.png, 2015×2243)의 Crop imageTransform 에서 구한 자리 = assets/trade-in-up/slot-icon/*.png
+export const PSLOT_ICON = [330.2, 294.4, 1339.6, 1491.2]; // 컴포넌트 이미지 채우기(source/1102 정리/<in|up> icon-fixed.png · -eco.png, 2015×2243)의 Crop imageTransform 에서 구한 자리 = assets/trade-in-up/slot-icon/*.png (build-dark.py 가 같은 틀 · 자리로 만든다)
 const BOX_PAD = 0.1;
 const SLOT_ALPHA = 0.8; // 칸 불투명도 기본 (opts.box 가 없을 때) — builder-app BOX_STYLES White 와 같다. 배경 컬러가 비쳐 보인다
 function drawProductSlot(ctx, slot, opts) {
@@ -383,7 +384,7 @@ function drawProductSlot(ctx, slot, opts) {
     const w = p.w * k, h = p.h * k;
     ctx.drawImage(p.img, x + (s - w) / 2, y + (s - h) / 2, w, h);
   });
-  const icon = opts.icon;
+  const icon = opts.icons?.[slot.layout] || opts.icon;
   if (icon?.complete && icon.naturalWidth) {
     const [ix, iy, is] = slot.icon, k = is / 2000, [rx, ry, rw, rh] = PSLOT_ICON;
     ctx.drawImage(iconWithRim(icon), ix + rx * k, iy + ry * k, rw * k, rh * k);
@@ -503,7 +504,7 @@ export const logosReady = () => Promise.all(Object.keys(LOGOS).map(id => {
 /**
  * opts.imageOnly: LG.com 다운로드용 — 카피·CTA 없이 (이미지 업로드 가이드: 아이콘·디스클레이머만 남긴다)
  * opts.kvGround: KV 판 바탕색 (#rrggbb, Figma #B0A79D = 기본 컷) — 컷은 원형 마스크로 이 색에 녹는다. opts.artVersion: 컷이 바뀌면 올린다 (마스크 사본을 다시 만든다)
- * opts.icon · products · bg: Product Slot 판 (drawProductSlot)
+ * opts.icons({ v, h }) · products · bg: Product Slot 판 (drawProductSlot)
  * opts.ground: 올린 이미지 — 판 바탕을 이 색(이미지 가장자리 평균)으로 깔고, 빈 곳은 거울 늘이기(drawArtMirrored), KV 용 그라데이션(fades)은 뺀다 (블프와 같다)
  * opts.darkInk: Dark 글자 모드 글자색 (없으면 #000) — 올린 이미지는 블프처럼 #111
  */

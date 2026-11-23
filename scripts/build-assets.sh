@@ -6,7 +6,8 @@
 #   frame   : Edit panel 정사각 전체 프레임 — 1200×1200
 #   stage   : 합성 바탕 — 원본 해상도 그대로 (PNG 다운로드가 이 크기로 나간다)
 #
-# 원본 = source/1102 정리/<trade-in|trade-up>/… (아래 bake_cut · bake_slot 주석). 버전 두 벌은 박스 배치·파일명이 같고 아이콘(화살표)만 다르다
+# 원본 = source/1120 정리/<trade in|trade up>/… (아래 bake_cut · bake_slot 주석). 버전 두 벌은 박스 배치·파일명이 같고 아이콘(화살표)만 다르다
+#   다크 Main Key Visual 과 Product Slot 아이콘은 scripts/build-dark.py 가 source/.gen/ 에 먼저 만든다 — 그걸 먼저 돌린다
 #   id = <in|up>-<줄>-<컷>[-dark][-np][-color-0N|-eco]  (예 in-b1-01-01-dark-color-02, up-slot-h-eco)
 # 원본이 없는 박스는 건너뛰고(빈 박스로 남는다), 구운 목록은 manifest.json 에 적는다 — 빌더가 이걸 읽는다.
 #
@@ -64,7 +65,8 @@ bake() {
   echo "baked $id"
 }
 
-NEW="1102 정리"
+NEW="1120 정리"
+GEN=".gen" # build-dark.py 결과 — 다크 컷(Darkness 40 으로 미리 그린 것) · Product Slot 아이콘
 
 # 팔레트 타일(-thumb.jpg)만 — bake 의 타일 자르기와 같은 값. 사용법은 bake 의 앞 두 인자 + 타일 인자
 thumb_only() {
@@ -91,7 +93,8 @@ if [ -f "$OUT/manifest.json" ]; then
   done
 fi
 
-# Basic 01 — "1102 정리/<trade-in|trade-up>/basic/<컷>/" (둥근 단상: 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형)
+# Basic 01 — "1120 정리/<trade in|trade up>/basic/<컷>/" (둥근 단상: 01-01 TV · 01-02 TV+구형 · 02-01 냉장고 · 02-02 냉장고+구형)
+#   Dark 컷은 원본이 없다 — "$GEN/dark/trade-<버전>/basic/<컷>/…" (build-dark.py 가 같은 이름으로 미리 그린 것). 썸네일은 1120 것
 #   <컷>-thumbnail-<톤>.png            : 팔레트 타일 (제품 합성된 컷)
 #   <톤>/<컷>-standard.png             : 캔버스·패널 빈 무대 = Background Color 01 Standard (Light 만 — Dark 는 02~06 만 있다)
 #   <톤>/<컷>-color-0N.png             : 02~06 → id 끝 -color-0N
@@ -102,7 +105,9 @@ bake_cut() {
   pre=$1; ld=$2; f=$3; csw=$4; shift 4
   for tone in light dark; do
     [ $tone = dark ] && t=-dark || t=""
-    d="$ld/$f/$tone"
+    # 컷 폴더 — Dark 는 build-dark.py 가 그린 것 (dld)
+    [ $tone = dark ] && cd_="$dld" || cd_="$ld"
+    d="$cd_/$f/$tone"
     th=$(first_of "$ld/$f/$f-thumbnail-$tone.png")
     [ -n "$th" ] || { echo "  - $ld/$f $tone 썸네일 없음 — $pre-$f$t 는 빈 박스"; continue; }
     SWATCH=$csw
@@ -112,7 +117,7 @@ bake_cut() {
     [ -f "$SRC/$d/$f-color-eco.png" ] && bake $pre-$f$t-eco "$th" "$d/$f-color-eco.png" "$@"
     # No Old Product — <컷>/noproduct-standard/<톤>/<컷>-noproduct-{standard,color-0N,color-eco}.png (01-02 · 02-02 만)
     #   미리보기 오른쪽 위 No Old Product 를 켜면 이 컷으로 바뀐다 → id <컷>[-dark]-np[-color-0N|-eco]
-    npd="$ld/$f/noproduct-standard/$tone"
+    npd="$cd_/$f/noproduct-standard/$tone"
     if [ -d "$SRC/$npd" ]; then
       [ $tone = light ] && [ -f "$SRC/$npd/$f-noproduct-standard.png" ] && bake $pre-$f$t-np "$th" "$npd/$f-noproduct-standard.png" "$@"
       for c in 01 02 03 04 05; do [ -f "$SRC/$npd/$f-noproduct-color-$c.png" ] && bake $pre-$f$t-np-color-$c "$th" "$npd/$f-noproduct-color-$c.png" "$@"; done
@@ -126,7 +131,8 @@ bake_cut() {
 # 같은 단상이라 폭(60%)은 맞추고, TV 컷은 타일 중심을 48% 로 올려 그림을 조금 내리고(사용자 요청), 냉장고 컷은 타일·미리보기 중심을 조금 올린다 (미리보기 47% — builder-app.js previewCy)
 # 컬러 칸은 단상 위 배경(원본 1250,600 에서 500px)
 for v in in up; do
-  ld="$NEW/trade-$v/basic"
+  ld="$NEW/trade $v/basic"
+  dld="$GEN/dark/trade-$v/basic"
   # TV 컷 미리보기 중심 48% — 캔버스 그림을 조금 내린다 (builder-app.js previewCy, 사용자 요청)
   for f in 01-01 01-02; do bake_cut $v-b1 "$ld" $f "1250 600 500" 60 48 51 48; done
   # 냉장고 타일 중심 — 02-01 은 45%, 02-02 는 47%. 미리보기 중심 — 02-01 47%, 02-02 49% (그림을 조금 올린다). 사용자 요청
@@ -135,14 +141,14 @@ for v in in up; do
   bake_cut $v-b1 "$ld" 02-02 "1250 600 500" 60 47 51 47.5 29.7
 done
 
-# 아이콘 없는 컷 (미리보기 오른쪽 위 Standard) — "1102 정리/basic-noicon/<컷>/<톤>/color-{standard,0N,eco}.png"
+# 아이콘 없는 컷 (미리보기 오른쪽 위 Standard) — "1120 정리/basic-noicon/<컷>/light/color-{standard,0N,eco}.png" · Dark 는 "$GEN/dark/basic-noicon/<컷>/dark/"
 #   Trade In · Up 이 같은 그림이라 한 번만 굽는다 → id ni-b1-<컷>[-dark][-color-0N|-eco]. 빌더가 <버전>-b1-<컷>[-dark]-ni… 로 읽는다
 #   구형 제품(01-02 · 02-02)도 빠진 컷. 타일·미리보기 자리는 위 bake_cut 과 같은 값
 bake_noicon() {
   f=$1; shift
   for tone in light dark; do
     [ $tone = dark ] && t=-dark || t=""
-    d="$NEW/basic-noicon/$f/$tone"
+    [ $tone = dark ] && d="$GEN/dark/basic-noicon/$f/$tone" || d="$NEW/basic-noicon/$f/$tone"
     SWATCH="1250 600 500"
     [ -f "$SRC/$d/color-standard.png" ] && bake ni-b1-$f$t "$d/color-standard.png" "$d/color-standard.png" "$@"
     for c in 01 02 03 04 05; do [ -f "$SRC/$d/color-$c.png" ] && bake ni-b1-$f$t-color-$c "$d/color-$c.png" "$d/color-$c.png" "$@"; done
@@ -156,11 +162,11 @@ bake_noicon 02-01 60 45 51 47 31.35
 bake_noicon 02-02 60 47 51 47.5 29.7
 
 # Slot — id <버전>-slot-v (세로형 = 아이콘 아래 칸 넷 한 줄, 1:4) / -slot-h (가로형 = 아이콘 양옆 두 칸씩, 2:2) (톤 없음)
-#   원본 = "1102 정리/<버전>/slot-new/<세로형|가로형>/"
+#   원본 = "1120 정리/<trade in|trade up>/slot/<세로형|가로형>/"
 #     thumbnail.png : 팔레트 타일 (칸에 제품이 든 컷, 배경 있음)
 #     no product.png : 캔버스·패널 무대 (빈 칸), no product-eco.png = Background Color 07 Eco (나무 아이콘)
 #     무대 컷은 배경이 투명하다 (배경 컬러는 Figma 에서 따로 입힌다) — 굽기 전에 배경을 깔아 source/.flat/ 에 둔다
-#       배경 = "1102 정리/slot-new/bg/" (3000², In·Up 공통) — standard.png = Standard 01, color-01~05.png = 컬러 02~06, eco.png = Eco 07 (없으면 바탕색 240,236,228)
+#       배경 = "1120 정리/slot-bg/" (3000², In·Up 공통) — standard.png = Standard 01, color-01~05.png = 컬러 02~06, eco.png = Eco 07 (없으면 바탕색 240,236,228)
 #         Figma "Trade In Up - Product Slot BG" 컴포넌트의 배경(레이어 위에서부터 Standard → … → Eco)에 흰색 50% 를 씌운 값
 #         = 아이보리 베이지 · 퍼플 · 핑크 · 오렌지 · 옐로 · (06 없음) · 그린
 #       매체 사이즈 미리보기용으로 같은 배경을 줄여 assets/trade-in-up/slot-bg/<standard|color-0N|eco>.jpg 에도 둔다 (lib/channelSlots.js drawProductSlot 이 판에 cover 로 깐다)
@@ -169,7 +175,7 @@ bake_noicon 02-02 60 47 51 47.5 29.7
 #   가로형 : 그림(901~2098 × 1174~1835)이 가운데라 타일 폭 66% · 미리보기 줌 2.8 (세로형과 같은 배율 — 화살표로 넘겨도 아이콘 크기가 같다)
 #            컬러 칸은 아이콘 면 왼쪽 아래(1255,1605 에서 60px)
 #   배경 컬러 컷(02~06 · Eco)의 컬러 칸은 배경 왼쪽 가운데(200,1350 에서 300px — 아이콘·칸이 없는 자리). Main Key Visual 처럼 Eco 칸도 배경색(그린)
-BGDIR="$NEW/slot-new/bg"
+BGDIR="$NEW/slot-bg"
 # 사용법: flat <투명 원본> <.flat 이름> [배경 이미지 — 없으면 바탕색]
 flat() {
   mkdir -p "$SRC/.flat"
@@ -196,7 +202,7 @@ Image.fromarray(np.clip(t + (1 - a) * (g - flat) + .5, 0, 255).astype(np.uint8))
 }
 bake_slot() {
   v=$1; shape=$2; key=$3; sw=$4; shift 4
-  d="$NEW/trade-$v/slot-new/$shape"
+  d="$NEW/trade $v/slot/$shape"
   [ -f "$SRC/$d/no product.png" ] || { echo "  - $d/no product.png 없음 — $v-slot-$key 는 빈 박스"; return 0; }
   std="$BGDIR/standard.png"; [ -f "$SRC/$std" ] || std=""
   # 팔레트 타일 — Standard 배경이 있으면 썸네일 바탕도 그 배경으로 (모든 컬러 칸이 같은 타일을 쓴다)
@@ -237,9 +243,17 @@ for c in standard color-01 color-02 color-03 color-04 color-05 eco; do
   sips -s format jpeg -s formatOptions 90 -Z 1500 "$SRC/$BGDIR/$c.png" --out "$OUT/slot-bg/$c.jpg" >/dev/null
   sips -s format jpeg -s formatOptions 92 "$SRC/$BGDIR/$c.png" --out "$OUT/slot-bg-hi/$c.jpg" >/dev/null
 done
+# Product Slot 매체 판 아이콘 — build-dark.py 가 슬롯 컷(세로형 v · 가로형 h)에서 떼어 1102 파일과 같은 2015×2243 자리에 놓은 것.
+#   판 배치(channelSlotDataSlot.js layout)마다 그 배치의 아이콘 → slot-icon(-hi)/<버전>-<v|h>-<clear|wood>.png. 미리보기용은 1200×1336
+rm -rf "$OUT/slot-icon"
+mkdir -p "$OUT/slot-icon"
 for v in in up; do
-  cp "$SRC/$NEW/$v icon-fixed.png" "$OUT/slot-icon-hi/$v-clear.png"
-  cp "$SRC/$NEW/$v icon-eco.png" "$OUT/slot-icon-hi/$v-wood.png"
+  for lay in v h; do
+    cp "$SRC/$GEN/$v icon-$lay-fixed.png" "$OUT/slot-icon-hi/$v-$lay-clear.png"
+    cp "$SRC/$GEN/$v icon-$lay-eco.png" "$OUT/slot-icon-hi/$v-$lay-wood.png"
+    sips -Z 1336 "$OUT/slot-icon-hi/$v-$lay-clear.png" --out "$OUT/slot-icon/$v-$lay-clear.png" >/dev/null
+    sips -Z 1336 "$OUT/slot-icon-hi/$v-$lay-wood.png" --out "$OUT/slot-icon/$v-$lay-wood.png" >/dev/null
+  done
 done
 for v in in up; do
   bake_slot $v 세로형 v "1230 1380 100" 66 46 50 46 28
