@@ -725,10 +725,12 @@ function renderSlots() {
     const keys = `${dpr}|${Math.round(avail)}|${slots.map(sl => sl.key).join()}`;
     if (box.dataset.keys !== keys) {
       box.dataset.keys = keys;
+      const multiGroup = new Set(slots.map(sl => sl.label)).size > 1;
       box.innerHTML = slots.map((sl, i) => {
         const edge = sl.key === HERO_PC ? 720 : 360;
         const k = Math.min(1, edge / Math.max(sl.w, sl.h), avail / sl.w);
-        const head = state.channel === 'all' && sl.label !== slots[i - 1]?.label ? `<p class="tb-slots-group">${esc(sl.label)}</p>` : '';
+        // 묶음 제목 — ALL 은 매체마다, 한 매체만 골라도 묶음이 둘 이상이면(Pmax · PMax (only D2C)) 묶음마다
+        const head = (state.channel === 'all' || multiGroup) && sl.label !== slots[i - 1]?.label ? `<p class="tb-slots-group">${esc(sl.label)}</p>` : '';
         return `${head}
         <figure class="tb-slot">
           <canvas width="${Math.round(sl.w * k * dpr)}" height="${Math.round(sl.h * k * dpr)}" data-slot="${esc(sl.key)}" style="width:${sl.w * k}px"></canvas>

@@ -147,7 +147,10 @@ const lgcomRank = s => {
 const SHAPE_EDGES = [0.9, 1.25, 2.2, 5];
 const shapeRank = s => { const r = s.w / s.h; const g = SHAPE_EDGES.findIndex(e => r < e); return (g < 0 ? SHAPE_EDGES.length : g) * 100 + r; };
 function ordered(key, list) {
-  return key === 'lg-com' ? [...list].sort((a, b) => lgcomRank(a) - lgcomRank(b)) : [...list].sort((a, b) => shapeRank(a) - shapeRank(b));
+  const rank = key === 'lg-com' ? lgcomRank : shapeRank;
+  // 한 매체에 묶음이 둘 이상이면(Pmax → PMax (only D2C)) 묶음째 데이터 순서로, 묶음 안에서만 줄 세운다 — 섞이면 묶음 제목이 번갈아 붙는다
+  const labels = [...new Set(list.map(s => s.label))];
+  return labels.flatMap(l => list.filter(s => s.label === l).sort((a, b) => rank(a) - rank(b)));
 }
 
 /**
@@ -465,11 +468,13 @@ const LOGOS = { white: 'assets/trade-in-up/logo/lg-logo-white.svg', black: 'asse
 /** 글 상자 폭에 맞춰 줄을 나눈다 — 줄바꿈(Enter)은 그대로, 넘치면 단어 단위로. maxLines 를 넘으면 마지막 줄 끝을 … 로 */
 function wrap(ctx, text, maxW, maxLines = Infinity) {
   const out = [];
+  // 브라우저가 Figma 보다 글자 폭을 살짝 넓게 잰다 (468x60: Figma 239 칸에 딱 맞는 줄이 239.2) — 그만큼은 넘쳐도 한 줄로
+  const fitW = maxW + Math.max(1, maxW * 0.005);
   for (const para of String(text).split('\n')) {
     let line = '';
     for (const word of para.split(/\s+/).filter(Boolean)) {
       const next = line ? `${line} ${word}` : word;
-      if (line && ctx.measureText(next).width > maxW) { out.push(line); line = word; } else line = next;
+      if (line && ctx.measureText(next).width > fitW) { out.push(line); line = word; } else line = next;
     }
     out.push(line);
   }

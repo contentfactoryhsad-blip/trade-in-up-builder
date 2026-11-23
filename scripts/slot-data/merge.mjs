@@ -30,7 +30,8 @@ for (const [ch, list] of Object.entries(ti)) {
     const dup = (seen[s.key] = (seen[s.key] || 0) + 1) > 1;
     const key = dup ? `${s.key}-${seen[s.key]}` : s.key;
     const noCopy = NO_COPY.has(key);
-    const r = { key, label: x?.label || ch, w: s.w, h: s.h, art: s.art, fades: s.fades };
+    const r = { key, label: (x?.label || ch).replace('Pina Penezenka', 'Plna Penezenka'), // 크리스마스 데이터 오타
+      w: s.w, h: s.h, art: s.art, fades: s.fades };
     if (!noCopy && x) { for (const k of ['logo', 'rows', 'cta', 'disc']) if (x[k]) r[k] = x[k]; }
     if (noCopy) r.noCopy = 1;
     return r;
