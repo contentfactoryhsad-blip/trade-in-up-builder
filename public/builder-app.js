@@ -178,7 +178,9 @@ const CHANNEL_ROWS = [
 const CHANNEL_KEYS = Object.fromEntries(CHANNEL_ROWS.flat().filter(c => c.key !== 'all').map(c => [c.key, c.label]));
 
 // 헤더 Working Files 버튼 링크 — 비어 있으면 흐린 채로 눌리지 않는다 (링크는 나중에)
-const WORKING_FILES_URL = '';
+const WORKING_FILES_URL = 'https://f.io/ch9Brm5r';
+/** 왼쪽 레일 Tutorial — 비어 있으면 흐리게 두고 "Link coming soon" (크리스마스 빌더와 같은 방식) */
+const TUTORIAL_URL = '';
 
 /** 상단 스텝 — 크리스마스 빌더와 같은 구성. 누르면 그 화면으로 간다. 3 은 매체 고르기 (카피 편집은 나중에) */
 const STEPS = ['Select Visual Type', 'Image Edit', 'Select Channel & Edit Copy'];
@@ -425,6 +427,11 @@ if (WORKING_FILES_URL) {
   const wf = $('#workingFiles');
   Object.assign(wf, { href: WORKING_FILES_URL, title: '' });
   wf.removeAttribute('aria-disabled');
+}
+if (TUTORIAL_URL) {
+  const tl = $('#tutorialLink');
+  Object.assign(tl, { href: TUTORIAL_URL, title: '' });
+  tl.removeAttribute('aria-disabled');
 }
 $('#stepBack').addEventListener('click', () => { if (state.selectedId && state.step > 0) goStep(state.step - 1); });
 $('#steps').addEventListener('click', e => {
