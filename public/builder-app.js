@@ -186,7 +186,7 @@ const CHANNEL_KEYS = Object.fromEntries(CHANNEL_ROWS.flat().filter(c => c.key !=
 // 헤더 Working Files 버튼 링크 — 비어 있으면 흐린 채로 눌리지 않는다 (링크는 나중에)
 const WORKING_FILES_URL = 'https://f.io/ch9Brm5r';
 /** 왼쪽 레일 Tutorial — 비어 있으면 흐리게 두고 "Link coming soon" (크리스마스 빌더와 같은 방식) */
-const TUTORIAL_URL = '';
+const TUTORIAL_URL = 'https://f.io/oTqpcWD2';
 
 /** 상단 스텝 — 크리스마스 빌더와 같은 구성. 누르면 그 화면으로 간다. 3 은 매체 고르기 (카피 편집은 나중에) */
 const STEPS = ['Select Visual Type', 'Image Edit', 'Select Channel & Edit Copy'];
@@ -2020,11 +2020,13 @@ $('#palette').addEventListener('click', e => {
   if (cell.classList.contains('selected')) { selectAsset(null); return; }
   // Light · Dark 칸 — 그 칸의 톤으로 바꾼 뒤 고른다 (findAsset 이 지금 톤의 id 로 찾는다)
   if (cell.dataset.tone) state.tone[cell.dataset.group] = cell.dataset.tone;
+  // 칸 id 에는 지금 고른 컬러가 붙어 있다 (in-slot-v-color-01) — 컬러를 되돌리기 전에 찾아야 한다
+  // (먼저 되돌리면 못 찾아 빈 화면이 됐다: Dark 컬러 02 → Product Slot)
+  const hit = findAsset(cell.dataset.id);
   // 다른 에셋을 고르면 Background Color 는 언제나 첫 칸에서 시작한다 (Light 01 Standard · Dark 02)
   state.bgColor = 'c1';
   state.noIcon = false;
   state.step = 1;
-  const hit = findAsset(cell.dataset.id);
   selectAsset(hit ? assetId(hit.asset.version, hit.group.key, hit.asset.base) : cell.dataset.id);
   placeOldProduct(hit?.asset, hit?.group.key);
 });
