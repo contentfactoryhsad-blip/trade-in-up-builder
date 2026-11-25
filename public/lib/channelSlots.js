@@ -530,6 +530,13 @@ export function adjustArt(slot, a) {
   return out;
 }
 
+/**
+ * 카피 세로 가운데 — 카피 옆에 CTA 가 붙는 띠 배너(와 좁은 120 폭 배너). Figma 는 카피 칸(Copy + CTA btn, 120 폭은 Copy)을
+ * 기본 문구(2줄 등) 높이로 고정 + 세로 가운데로 두어, 카피가 짧아져 줄이 줄면 위에 붙지 않고 칸 가운데로 온다. 빌더도 같은 칸의 가운데에 맞춘다
+ */
+const VCENTER_SIZES = new Set(['320x50', '300x50', '468x60', '234x60', '728x90', '970x90', '640x100', '216x36', '168x28', '120x20', '120x60', '120x90']);
+const vcenterCopy = slot => slot.label !== 'LG.com' && VCENTER_SIZES.has(`${slot.w}x${slot.h}`);
+
 export function drawSlot(ctx, slot, art, cs, opts = {}) {
   if (slot.noCopy) slot = { ...slot, logo: null, rows: [], cta: null, disc: null };
   // 올린 이미지는 블프 판 자리(UPLOAD_ART)가 기준
@@ -595,21 +602,28 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
   ctx.fillStyle = ink;
   ctx.textBaseline = 'top';
   let shift = 0, lastEnd = null, lastFigmaEnd = null;
+  // 먼저 줄을 나눠 자리를 잡고(위에서부터 쌓기), 띠 배너는 카피 묶음을 Figma 카피 칸의 세로 가운데로 옮겨 그린다
+  const laid = [];
   rows.forEach(r => {
     if (!on[r.k] || !val(r.k)) { if (lastEnd != null) lastFigmaEnd = r.y + r.h; return; }
     const [face, weight] = FACE[r.k];
     ctx.font = `${weight} ${r.sz}px ${face}`;
-    ctx.textAlign = r.al === 'C' ? 'center' : r.al === 'R' ? 'right' : 'left';
-    const tx = r.al === 'C' ? r.x + r.w / 2 : r.al === 'R' ? r.x + r.w : r.x;
     const lh = r.sz * 1.06;
     // 낮은 띠 배너(120 이하)와 줄 수를 고정한 칸(clamp)은 Figma 줄 수를 넘으면 말줄임 — CTA 가 밀리지 않게
     const lines = wrap(ctx, val(r.k), r.w, H <= 120 || r.clamp ? r.lines : Infinity);
     // 앞 줄이 숨겨졌으면 그 자리만큼 당긴다 — 첫 줄은 Figma 의 첫 줄 자리에서
     const y = lastEnd == null ? rows[0].y : lastEnd + (r.y - lastFigmaEnd);
-    lines.forEach((l, n) => ctx.fillText(l, tx, y + n * lh + (lh - r.sz) / 2));
+    laid.push({ r, font: ctx.font, lines, lh, y });
     lastEnd = y + lines.length * lh;
     lastFigmaEnd = r.y + r.h;
     shift = lastEnd - lastFigmaEnd;
+  });
+  const dy = laid.length && vcenterCopy(slot) ? (rows[0].y + rows[rows.length - 1].y + rows[rows.length - 1].h) / 2 - (laid[0].y + lastEnd) / 2 : 0;
+  laid.forEach(({ r, font, lines, lh, y }) => {
+    ctx.font = font;
+    ctx.textAlign = r.al === 'C' ? 'center' : r.al === 'R' ? 'right' : 'left';
+    const tx = r.al === 'C' ? r.x + r.w / 2 : r.al === 'R' ? r.x + r.w : r.x;
+    lines.forEach((l, n) => ctx.fillText(l, tx, y + dy + n * lh + (lh - r.sz) / 2));
   });
   // 세로로 쌓는 CTA 는 마지막 보이는 줄 아래에 Figma 의 (마지막 줄 → CTA) 간격으로 — 줄을 꺼도 오토레이아웃처럼 당겨 붙는다
   const lastRow = rows[rows.length - 1];
