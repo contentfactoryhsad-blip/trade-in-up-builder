@@ -192,12 +192,11 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
 }
 
 /**
- * KV 원형 마스크 — Figma 컴포넌트 "KV radial mask" (Banner Template › TEST — Radial KV mask, 16995:24694) 와 같은 값.
- * 컷(정사각) 기준 가운데 (50%, 46.5%), 가로 반지름 49% · 세로 42% 타원. 안쪽 18% 까지 그대로, 그 바깥은 smootherstep 으로 0 까지.
+ * KV 원형 마스크 — Figma 컴포넌트 "KV radial mask" (Banner Template › TEST — Radial KV mask, 16995:24694) 와 같은 값 (2026-11-25 Figma 수정본).
+ * 컷(정사각) 기준 가운데 (50%, 51.08%), 반지름 50% 정원. 반지름 23% 까지 그대로, 94.23% 에서 0 — 그 사이는 Figma 처럼 직선으로 줄어든다.
  * 판은 바탕색(opts.kvGround) 단색 — 컷은 이 마스크로 바탕색에 녹는다. 컷마다 한 번만 만들어 둔다 (마스크는 컷 좌표라 사이즈와 상관없다)
  */
-const MASK = { cx: 0.5, cy: 0.465, rx: 0.49, ry: 0.42, inner: 0.18 };
-const smoother = t => t * t * t * (t * (t * 6 - 15) + 10);
+const MASK = { cx: 0.5, cy: 0.5108, rx: 0.5, ry: 0.5, inner: 0.23, outer: 0.9423 };
 const maskCache = new WeakMap();
 function maskedArt(art, version) {
   const hit = maskCache.get(art);
@@ -214,8 +213,8 @@ function maskedArt(art, version) {
   const R = N * MASK.rx;
   const grad = g.createRadialGradient(0, 0, 0, 0, 0, R);
   grad.addColorStop(0, 'rgba(0,0,0,1)');
-  const STEPS = 20;
-  for (let i = 0; i <= STEPS; i++) grad.addColorStop(MASK.inner + (1 - MASK.inner) * i / STEPS, `rgba(0,0,0,${(1 - smoother(i / STEPS)).toFixed(4)})`);
+  grad.addColorStop(MASK.inner, 'rgba(0,0,0,1)');
+  grad.addColorStop(MASK.outer, 'rgba(0,0,0,0)');
   g.fillStyle = grad;
   g.fillRect(-R * 2, -R * 2 * MASK.rx / MASK.ry, R * 4, R * 4 * MASK.rx / MASK.ry);
   maskCache.set(art, { c, version });
