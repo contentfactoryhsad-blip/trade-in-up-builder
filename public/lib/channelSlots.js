@@ -197,16 +197,10 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
  * 판은 바탕색(opts.kvGround) 단색 — 컷은 이 마스크로 바탕색에 녹는다. 컷마다 한 번만 만들어 둔다 (마스크는 컷 좌표라 사이즈와 상관없다)
  */
 const MASK = { cx: 0.5, cy: 0.5108, rx: 0.5, ry: 0.5, inner: 0.23, outer: 0.9423 };
-/**
- * Dark 톤 매체 사이즈 — 원형 마스크는 없고(블랙 그라데이션은 KV 안), KV 네모 맨 가장자리만 블랙으로 녹인다.
- * Darkness 를 50 아래로 낮추면 블랙 그라데이션이 커져 KV 네모 끝이 다 블랙이 아니라 띠 배너에서 네모 경계가 보이기 때문.
- * 반지름 92% 까지 그대로 → 100% 에서 0. Darkness 50(Figma)에서는 이 자리가 이미 거의 블랙이라 차이가 없다
- */
-const DARK_EDGE = { ...MASK, inner: 0.92, outer: 1 };
-const maskCache = { light: new WeakMap(), dark: new WeakMap() };
-function maskedArt(art, version, tone = 'light') {
-  const M = tone === 'dark' ? DARK_EDGE : MASK;
-  const cache = maskCache[tone === 'dark' ? 'dark' : 'light'];
+const maskCache = new WeakMap();
+function maskedArt(art, version) {
+  const M = MASK;
+  const cache = maskCache;
   const hit = cache.get(art);
   if (hit && hit.version === version) return hit.c;
   const N = Math.min(art.naturalWidth || art.width, 3000);
@@ -227,6 +221,27 @@ function maskedArt(art, version, tone = 'light') {
   g.fillRect(-R * 2, -R * 2 * M.rx / M.ry, R * 4, R * 4 * M.rx / M.ry);
   cache.set(art, { c, version });
   return c;
+}
+
+/**
+ * Dark 톤 KV 밖 채우기 — ext = { bg: 컬러 배경 이미지(3000²), cx, cy, rx, ry: 블랙 그라데이션 가운데·반지름(KV 변 비율), i1, stops: [[위치, 알파]] }.
+ * KV 네모 밖(2px 겹침)에만: 컬러 배경을 KV 자리에서 거울로 늘이고, 그 위에 builder-app darkBg 와 같은 블랙 그라데이션을 판 좌표로 칠한다.
+ * KV 안은 메인 컷 그대로라 안팎이 같은 배경 · 같은 블랙으로 이어진다
+ */
+function drawDarkExtension(ctx, ext, [ax, ay, as], W, H) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, H);
+  ctx.rect(ax + 2, ay + 2, Math.max(0, as - 4), Math.max(0, as - 4));
+  ctx.clip('evenodd');
+  drawArtMirrored(ctx, ext.bg, [ax, ay, as], W, H);
+  ctx.translate(ax + as * ext.cx, ay + as * ext.cy);
+  ctx.scale(as * ext.rx, as * ext.ry);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, ext.i1);
+  for (const [p, a] of ext.stops) g.addColorStop(p, `rgba(0,0,0,${a})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(-50, -50, 100, 100);
+  ctx.restore();
 }
 
 /**
@@ -576,8 +591,12 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
     ctx.fillRect(0, 0, W, H);
     ctx.imageSmoothingQuality = 'high';
     const [ax, ay, as] = slot.art;
-    // Dark 톤은 KV 에 블랙 그라데이션(Darkness)이 이미 들어 있어 원형 마스크 대신 가장자리만 녹인다(DARK_EDGE) — 블랙 판 위에
-    ctx.drawImage(maskedArt(art, opts.artVersion, opts.kvTone), ax, ay, as, as);
+    if (opts.kvTone === 'dark') {
+      // Dark 톤 — KV 에 블랙 그라데이션(Darkness)이 이미 들어 있어 원형 마스크를 씌우지 않는다.
+      // KV 밖은 컬러 배경을 거울로 이어 채우고 같은 블랙 그라데이션을 판 전체로 이어 칠해 KV 네모 경계가 생기지 않게 (Darkness 0 에서도)
+      if (opts.darkExt) drawDarkExtension(ctx, opts.darkExt, slot.art, W, H);
+      ctx.drawImage(art, ax, ay, as, as);
+    } else ctx.drawImage(maskedArt(art, opts.artVersion), ax, ay, as, as);
   }
   // 예전 그라데이션(fades) — 원형 마스크로 바뀌어 KV 판에는 쓰지 않는다 (opts.legacyFades 일 때만)
   const hex = opts.fadeColor || '#9c9185';

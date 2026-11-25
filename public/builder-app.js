@@ -812,7 +812,8 @@ function slotDrawArgs(hit, board) {
   // Dark 톤 KV — Figma 다크 보드처럼 블랙 판 위에 KV 그대로 (블랙 그라데이션은 KV 안에 — 원형 마스크를 또 씌우지 않는다)
   const kvTone = hit.group?.key === 'basic-01' && toneOf('basic-01') === 'dark' ? 'dark' : 'light';
   const kvGround = kvTone === 'dark' ? '#000000' : fadeColor ? kvGroundFor(fadeColor) : null;
-  return { comp, opts: { fadeColor, kvGround, kvTone, artVersion, ...pslotOpts } };
+  const darkExt = kvTone === 'dark' ? darkExtFor() : null;
+  return { comp, opts: { fadeColor, kvGround, kvTone, darkExt, artVersion, ...pslotOpts } };
 }
 // 글꼴·로고가 늦게 읽히면 한 번 더
 Promise.all([document.fonts.load('600 20px "LGEI Headline"'), document.fonts.load('400 20px "LGEI Text"'), logosReady()]).then(() => renderSlots());
@@ -1032,10 +1033,35 @@ function darkImg(src) {
  * Darkness → 블랙 띠 (반지름 = KV 반 변 기준 비율). i0 = 투명이 끝나는 곳, i1 = 블랙 100%, soft = 끝 둥글리기 0~1
  *   0 ~ 50 : 그라데이션 전체를 키운다 (0 → 1.6 배, 50 = Figma 그대로) — 원 테두리 없이 고르게 밝아진다 (예전 방식).
  *            0 은 예전 0(PSD 타원 1.3 배, 블랙이 안 덮는 면적 59.6%)보다 밝게 — 1.6 배 = 66.7%
- *            KV 네모 가장자리가 다 블랙이 아니게 되는 건 매체 사이즈에서 가장자리 녹이기(channelSlots DARK_EDGE)로 감춘다
+ *            KV 네모 끝이 다 블랙이 아니게 되는 건 매체 사이즈에서 KV 밖을 배경 거울 + 같은 블랙으로 이어 채워 감춘다 (channelSlots drawDarkExtension)
  *   50 ~ 100: 띠 폭은 그대로 두고 위치만 안으로 (i1 1 → 0.5), 블랙 끝 둥글리기를 고르게 늘린다
  */
 const DARK_MAX_SCALE = 1.6; // Darkness 0 일 때 그라데이션 배율
+/**
+ * 블랙 그라데이션 멈춤점 — 반지름 i1(그라데이션 반지름 단위) 까지 [위치 0~1, 알파]. darkBg 와 매체 사이즈 KV 밖 채우기(channelSlots drawDarkExtension)가 같이 쓴다
+ */
+function darkGradient(d) {
+  const { i0, i1, soft } = darkBand(d);
+  const pow = Math.log(0.5) / Math.log(DARK_GRAD.mid);
+  const alpha = r => {
+    const u = Math.min(1, Math.max(0, (r - i0) / (i1 - i0))) ** pow;
+    return u + soft * (u * u * (3 - 2 * u) - u); // 블랙에 닿는 끝을 둥글린다
+  };
+  const from = Math.max(0, i0);
+  const stops = [[0, +alpha(0).toFixed(4)]];
+  // 끝(r = i1)이 부동소수 오차로 1.0000000000000002 가 되면 addColorStop 이 오류를 내고 그림이 멈춘다 — 1 로 묶는다
+  for (let i = 0; i <= 32; i++) { const r = from + (i1 - from) * i / 32; stops.push([Math.min(1, r / i1), +alpha(r).toFixed(4)]); }
+  return { i1, stops };
+}
+/** 다크 매체 사이즈 KV 밖 채우기 재료 — 지금 컬러 배경 + 지금 Darkness 의 블랙 그라데이션 (레이어 다크 컷일 때만) */
+function darkExtFor() {
+  if (!darkSel()) return null;
+  const color = BG_COLORS.find(c => c.key === bgColorOf('basic-01')).suffix.slice(1);
+  const bg = darkImg(`${DARK_DIR}/bg/${color}.jpg`);
+  if (!bg) return null;
+  const G = DARK_GRAD;
+  return { bg, cx: G.cx / 3000, cy: G.cy / 3000, rx: G.rx / 3000, ry: G.ry / 3000, ...darkGradient(state.darkness) };
+}
 function darkBand(d) {
   const G = DARK_GRAD, W0 = G.r1 - G.r0;
   if (d <= DARK_DEFAULT) { const sc = DARK_MAX_SCALE - (DARK_MAX_SCALE - 1) * d / DARK_DEFAULT; return { i0: G.r0 * sc, i1: G.r1 * sc, soft: 0 }; }
@@ -1121,24 +1147,13 @@ function darkBg() {
     }
     g.globalCompositeOperation = 'source-over';
     // 블랙 — 띠 위치·모양은 darkBand
-    const { i0, i1, soft } = darkBand(state.darkness);
+    const { i1, stops } = darkGradient(state.darkness);
     const G = DARK_GRAD, f = w / 3000;
     g.save();
     g.translate(G.cx * f, G.cy * f);
     g.scale(G.rx * f, G.ry * f);
     const grad = g.createRadialGradient(0, 0, 0, 0, 0, i1);
-    const pow = Math.log(0.5) / Math.log(G.mid);
-    const alpha = r => {
-      const u = Math.min(1, Math.max(0, (r - i0) / (i1 - i0))) ** pow;
-      return u + soft * (u * u * (3 - 2 * u) - u); // 블랙에 닿는 끝을 둥글린다
-    };
-    const from = Math.max(0, i0);
-    grad.addColorStop(0, `rgba(0,0,0,${alpha(0).toFixed(4)})`);
-    for (let i = 0; i <= 32; i++) {
-      const r = from + (i1 - from) * i / 32;
-      // 끝(r = i1)이 부동소수 오차로 1.0000000000000002 가 되면 addColorStop 이 오류를 내고 그림이 멈춘다 — 1 로 묶는다
-      grad.addColorStop(Math.min(1, r / i1), `rgba(0,0,0,${alpha(r).toFixed(4)})`);
-    }
+    for (const [p, a] of stops) grad.addColorStop(p, `rgba(0,0,0,${a})`);
     g.fillStyle = grad;
     g.fillRect(-4, -4, 8, 8);
     g.restore();
