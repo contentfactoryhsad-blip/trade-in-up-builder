@@ -302,7 +302,7 @@ const state = {
   open: new Set(['product']), // Product & Shadow 는 늘 펼쳐 둔다 (EDIT_SECTIONS fixed)
   // Product Slot 칸 투명도 — Background Color 아래 Box 슬라이더. null = 기본 80%
   box: { opacity: null },
-  darkness: 40, // 다크 톤 Darkness 조절바 (0~100) — Main Key Visual 다크 컬러 02~06 (darkBg). 40 = PSD 샘플 그대로 (DARK_DEFAULT)
+  darkness: 50, // 다크 톤 Darkness 조절바 (0~100) — Main Key Visual 다크 컬러 02~06 (darkBg). 50 = Figma 다크 마스크 그대로 (DARK_DEFAULT)
   fxOpen: false, // 고른 제품 줄 아래 Shadow 드롭다운을 펼쳤나
   guide: false, // 프리뷰에서 고른 제품에 크기 조절 상자를 띄웠나 (배경을 누르면 끈다)
   bg: null,
@@ -809,7 +809,10 @@ function slotDrawArgs(hit, board) {
   const fadeColor = comp ? fadeColorFor(comp) : null;
   // Product Slot 판 — 칸 제품은 지금 Slot 칸(boxSlots) 그대로, 배경은 Standard 01 바탕색 · 컬러 02~06 은 그 배경 이미지
   const pslotOpts = pslot ? { icons: { v: slotIcon(hit.asset.version, 'v'), h: slotIcon(hit.asset.version, 'h') }, products: state.boxSlots.map(s => s.product), bg: '#F0ECE4', bgImg: slotBg(hit.asset.version), box: boxLook() } : {};
-  return { comp, opts: { fadeColor, kvGround: fadeColor ? kvGroundFor(fadeColor) : null, artVersion, ...pslotOpts } };
+  // Dark 톤 KV — Figma 다크 보드처럼 블랙 판 위에 KV 그대로 (블랙 그라데이션은 KV 안에 — 원형 마스크를 또 씌우지 않는다)
+  const kvTone = hit.group?.key === 'basic-01' && toneOf('basic-01') === 'dark' ? 'dark' : 'light';
+  const kvGround = kvTone === 'dark' ? '#000000' : fadeColor ? kvGroundFor(fadeColor) : null;
+  return { comp, opts: { fadeColor, kvGround, kvTone, artVersion, ...pslotOpts } };
 }
 // 글꼴·로고가 늦게 읽히면 한 번 더
 Promise.all([document.fonts.load('600 20px "LGEI Headline"'), document.fonts.load('400 20px "LGEI Text"'), logosReady()]).then(() => renderSlots());
@@ -1002,13 +1005,15 @@ function boxPanel() {
  * 쌓는 순서: 컬러 배경 → 단상 그림자(곱하기) · 바닥 반사(더하기) → 아이콘 그림자 · 반사 → 블랙 그라데이션 → 단상 몸통(더하기)
  *   → 아이콘 몸통 (k 곱하기 + 배경색 하모나이즈한 a 더하기). 반사는 블랙 아래라야 어두운 데서 회색 얼룩이 안 뜬다.
  * Darkness 는 블랙 구멍 크기 — 0 = 블랙이 가장자리에만, 100 = 가장 어둡게. 불투명도는 그대로라 회색빛이 돌지 않는다.
- * build-assets.sh 는 Darkness 40 으로 미리 그린 컷(source/.gen/dark)을 예전 다크 컷 자리에 굽는다 — 팔레트 · 처음 그림 · 제품 그림자 색용
+ * build-assets.sh 는 Darkness 50 으로 미리 그린 컷(source/.gen/dark)을 예전 다크 컷 자리에 굽는다 — 팔레트 · 처음 그림 · 제품 그림자 색용
  */
 const DARK_DIR = `${ASSET_DIR}/dark`;
-const DARK_DEFAULT = 40; // Darkness 기본값 = PSD 샘플 그대로
+const DARK_DEFAULT = 50; // Darkness 기본값 = Figma "KV radial mask - Dark" (Type=Base) 그대로
 const DARK_BASES = new Set(['b1-01-01', 'b1-01-02', 'b1-02-01', 'b1-02-02']);
-// PSD 그라데이션 (3000² 기준) — 가운데 · 반지름, 투명 0% 지점 · 블랙 100% 지점(반지름 비), 가운데점 곡선 (build-dark.py GRAD 와 같은 값)
-const DARK_GRAD = { cx: 1462, cy: 1544, rx: 1921, ry: 1603, r0: 0.206, r1: 0.84, mid: 0.603 };
+// 블랙 그라데이션 (3000² 기준) — Figma "KV radial mask - Dark" Type=Base (Banner Template › Radial Dark KV mask, 2026-11-25):
+// KV 가운데 (50%, 51.08%) 정원 · 반지름 = KV 반 변, 23% 까지 투명 → 100% 에서 블랙 (직선, mid 0.5). build-dark.py GRAD 와 같은 값
+// (이전: PSD 타원 cx 1462 cy 1544 rx 1921 ry 1603, 0.206 → 0.84, mid 0.603)
+const DARK_GRAD = { cx: 1500, cy: 1532.4, rx: 1500, ry: 1500, r0: 0.23, r1: 1, mid: 0.5 };
 /** 지금 그림이 레이어로 그리는 다크 컷인가 — Main Key Visual · Dark · 컬러 02~06 */
 const darkSel = () => {
   const hit = findAsset(state.selectedId);
@@ -1024,16 +1029,18 @@ function darkImg(src) {
   return v instanceof HTMLImageElement ? v : null;
 }
 /**
- * Darkness → 블랙 띠 (반지름은 PSD 타원 기준 비율). i0 = 투명이 끝나는 곳, i1 = 블랙 100%, soft = 끝 둥글리기 0~1
- *   0 ~ 40 : 타원 전체를 키운다 (0 → 1.3 배, 40 = PSD 그대로)
- *   40 ~ 100: 띠 폭은 PSD 그대로 두고 위치만 안으로 (i1 0.84 → 0.42). 0 ~ 40 과 같은 빠르기로 이어지고,
- *             블랙 끝 둥글리기도 40 부터 100 까지 고르게 늘려 중간에 꺾이는 데가 없다
+ * Darkness → 블랙 띠 (반지름 = KV 반 변 기준 비율). i0 = 투명이 끝나는 곳, i1 = 블랙 100%, soft = 끝 둥글리기 0~1
+ *   0 ~ 50 : 그라데이션 전체를 키운다 (0 → 1.6 배, 50 = Figma 그대로) — 원 테두리 없이 고르게 밝아진다 (예전 방식).
+ *            0 은 예전 0(PSD 타원 1.3 배, 블랙이 안 덮는 면적 59.6%)보다 밝게 — 1.6 배 = 66.7%
+ *            KV 네모 가장자리가 다 블랙이 아니게 되는 건 매체 사이즈에서 가장자리 녹이기(channelSlots DARK_EDGE)로 감춘다
+ *   50 ~ 100: 띠 폭은 그대로 두고 위치만 안으로 (i1 1 → 0.5), 블랙 끝 둥글리기를 고르게 늘린다
  */
+const DARK_MAX_SCALE = 1.6; // Darkness 0 일 때 그라데이션 배율
 function darkBand(d) {
   const G = DARK_GRAD, W0 = G.r1 - G.r0;
-  if (d <= DARK_DEFAULT) { const sc = 1.3 - 0.3 * d / DARK_DEFAULT; return { i0: G.r0 * sc, i1: G.r1 * sc, soft: 0 }; }
+  if (d <= DARK_DEFAULT) { const sc = DARK_MAX_SCALE - (DARK_MAX_SCALE - 1) * d / DARK_DEFAULT; return { i0: G.r0 * sc, i1: G.r1 * sc, soft: 0 }; }
   const t = (d - DARK_DEFAULT) / (100 - DARK_DEFAULT);
-  const i1 = G.r1 + (0.42 - G.r1) * t;
+  const i1 = G.r1 + (G.r1 * 0.5 - G.r1) * t;
   return { i0: i1 - W0, i1, soft: t };
 }
 

@@ -197,9 +197,17 @@ function drawArtFilled(ctx, art, [ax, ay, as], W, H, version) {
  * 판은 바탕색(opts.kvGround) 단색 — 컷은 이 마스크로 바탕색에 녹는다. 컷마다 한 번만 만들어 둔다 (마스크는 컷 좌표라 사이즈와 상관없다)
  */
 const MASK = { cx: 0.5, cy: 0.5108, rx: 0.5, ry: 0.5, inner: 0.23, outer: 0.9423 };
-const maskCache = new WeakMap();
-function maskedArt(art, version) {
-  const hit = maskCache.get(art);
+/**
+ * Dark 톤 매체 사이즈 — 원형 마스크는 없고(블랙 그라데이션은 KV 안), KV 네모 맨 가장자리만 블랙으로 녹인다.
+ * Darkness 를 50 아래로 낮추면 블랙 그라데이션이 커져 KV 네모 끝이 다 블랙이 아니라 띠 배너에서 네모 경계가 보이기 때문.
+ * 반지름 92% 까지 그대로 → 100% 에서 0. Darkness 50(Figma)에서는 이 자리가 이미 거의 블랙이라 차이가 없다
+ */
+const DARK_EDGE = { ...MASK, inner: 0.92, outer: 1 };
+const maskCache = { light: new WeakMap(), dark: new WeakMap() };
+function maskedArt(art, version, tone = 'light') {
+  const M = tone === 'dark' ? DARK_EDGE : MASK;
+  const cache = maskCache[tone === 'dark' ? 'dark' : 'light'];
+  const hit = cache.get(art);
   if (hit && hit.version === version) return hit.c;
   const N = Math.min(art.naturalWidth || art.width, 3000);
   const c = document.createElement('canvas');
@@ -208,16 +216,16 @@ function maskedArt(art, version) {
   g.imageSmoothingQuality = 'high';
   g.drawImage(art, 0, 0, N, N);
   g.globalCompositeOperation = 'destination-in';
-  g.translate(N * MASK.cx, N * MASK.cy);
-  g.scale(1, MASK.ry / MASK.rx);
-  const R = N * MASK.rx;
+  g.translate(N * M.cx, N * M.cy);
+  g.scale(1, M.ry / M.rx);
+  const R = N * M.rx;
   const grad = g.createRadialGradient(0, 0, 0, 0, 0, R);
   grad.addColorStop(0, 'rgba(0,0,0,1)');
-  grad.addColorStop(MASK.inner, 'rgba(0,0,0,1)');
-  grad.addColorStop(MASK.outer, 'rgba(0,0,0,0)');
+  grad.addColorStop(M.inner, 'rgba(0,0,0,1)');
+  grad.addColorStop(M.outer, 'rgba(0,0,0,0)');
   g.fillStyle = grad;
-  g.fillRect(-R * 2, -R * 2 * MASK.rx / MASK.ry, R * 4, R * 4 * MASK.rx / MASK.ry);
-  maskCache.set(art, { c, version });
+  g.fillRect(-R * 2, -R * 2 * M.rx / M.ry, R * 4, R * 4 * M.rx / M.ry);
+  cache.set(art, { c, version });
   return c;
 }
 
@@ -568,7 +576,8 @@ export function drawSlot(ctx, slot, art, cs, opts = {}) {
     ctx.fillRect(0, 0, W, H);
     ctx.imageSmoothingQuality = 'high';
     const [ax, ay, as] = slot.art;
-    ctx.drawImage(maskedArt(art, opts.artVersion), ax, ay, as, as);
+    // Dark 톤은 KV 에 블랙 그라데이션(Darkness)이 이미 들어 있어 원형 마스크 대신 가장자리만 녹인다(DARK_EDGE) — 블랙 판 위에
+    ctx.drawImage(maskedArt(art, opts.artVersion, opts.kvTone), ax, ay, as, as);
   }
   // 예전 그라데이션(fades) — 원형 마스크로 바뀌어 KV 판에는 쓰지 않는다 (opts.legacyFades 일 때만)
   const hex = opts.fadeColor || '#9c9185';

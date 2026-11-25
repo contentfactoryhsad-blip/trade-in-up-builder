@@ -66,7 +66,7 @@ bake() {
 }
 
 NEW="1120 정리"
-GEN=".gen" # build-dark.py 결과 — 다크 컷(Darkness 40 으로 미리 그린 것) · Product Slot 아이콘
+GEN=".gen" # build-dark.py 결과 — 다크 컷(Darkness 50 으로 미리 그린 것) · Product Slot 아이콘
 
 # 팔레트 타일(-thumb.jpg)만 — bake 의 타일 자르기와 같은 값. 사용법은 bake 의 앞 두 인자 + 타일 인자
 thumb_only() {

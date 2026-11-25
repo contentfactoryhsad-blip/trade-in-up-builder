@@ -22,7 +22,7 @@ Main Key Visual 다크 톤 에셋 — "source/1120 정리/dark/" 에서 빌더�
   public/assets/trade-in-up/dark/bg/color-0N(-swatch).jpg     : 컬러 배경 · Background Color 동그라미
   public/assets/trade-in-up/dark/b1-<에셋>-{k,body,floor}.png  : 단상 레이어 (Trade In · Up 공통)
   public/assets/trade-in-up/dark/<in|up>-b1-<에셋>-icon-{k,a,shadow,refl}.png : 3000² 자리에 놓은 아이콘 몸통 · 바닥 그림자 · 반사
-  source/.gen/dark/…   : Darkness 40 으로 미리 그린 컷 — build-assets.sh 가 기존 다크 컷 자리처럼 굽는다
+  source/.gen/dark/…   : Darkness 50 으로 미리 그린 컷 — build-assets.sh 가 기존 다크 컷 자리처럼 굽는다
                          (팔레트 · 처음 그림 · 제품 그림자 색 고르기용. 화면 · 다운로드는 빌더가 다시 그린다)
   source/.gen/<in|up> icon-<v|h>-{fixed,eco}.png : Product Slot 매체 판 아이콘 — 슬롯 컷에서 떼어 1102 파일과 같은 2015×2243 자리에
 """
@@ -46,8 +46,10 @@ ICON_PLACE = {
     '02-02': ('side2', 0.2485, 1167.3, 1543.1),
 }
 # builder-app.js 와 같은 값 (DARK_GRAD · DARK_DEFAULT · ICON_REFLECT · ICON_HARMONY)
-GRAD = dict(cx=1462, cy=1544, rx=1921, ry=1603, r0=0.206, r1=0.84, mid=0.603)
-DARK_DEFAULT = 40
+# 블랙 그라데이션 = Figma "KV radial mask - Dark" Type=Base (2026-11-25) — 이전 PSD 타원 cx 1462 cy 1544 rx 1921 ry 1603, 0.206 → 0.84, mid 0.603
+GRAD = dict(cx=1500, cy=1532.4, rx=1500, ry=1500, r0=0.23, r1=1.0, mid=0.5)
+DARK_DEFAULT = 50
+DARK_MAX_SCALE = 1.6  # Darkness 0 배율 (builder-app.js 와 같다)
 GLASS = float(os.environ.get('GLASS', 0.8))  # 다크 아이콘 유리 면 불투명도 (PSD 원래 값 0.8)
 SHADOW = float(os.environ.get('SHADOW', 2.5))  # 아이콘 바닥 그림자 진하기 — PSD 그림자가 어둡게 하는 만큼 × SHADOW
 # (2026-11-23 사용자: 퍼지면 안 되고 포토샵처럼 밑변에 붙은 선만 — 포토샵 캡처와 맞춰 2.5)
@@ -240,16 +242,16 @@ def podium(a):
     return k, B * (1 - w), B * w
 
 
-# ── Darkness 40 미리 그리기 (builder-app.js darkBg 와 같은 순서 · 값) ─────────
+# ── Darkness 50 미리 그리기 (builder-app.js darkBg 와 같은 순서 · 값) ─────────
 def dark_alpha(d=DARK_DEFAULT):
     G = GRAD
     W0 = G['r1'] - G['r0']
     if d <= DARK_DEFAULT:
-        sc = 1.3 - 0.3 * d / DARK_DEFAULT
+        sc = DARK_MAX_SCALE - (DARK_MAX_SCALE - 1) * d / DARK_DEFAULT
         i0, i1, soft = G['r0'] * sc, G['r1'] * sc, 0
     else:
         t = (d - DARK_DEFAULT) / (100 - DARK_DEFAULT)
-        i1 = G['r1'] + (0.42 - G['r1']) * t
+        i1 = G['r1'] + (G['r1'] * 0.5 - G['r1']) * t
         i0, soft = i1 - W0, t
     yy, xx = np.mgrid[0:N, 0:N].astype(np.float32)
     r = np.sqrt(((xx - G['cx']) / G['rx']) ** 2 + ((yy - G['cy']) / G['ry']) ** 2)
