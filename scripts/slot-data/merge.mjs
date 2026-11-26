@@ -16,7 +16,7 @@ const [,, xmasPath, tiPath, outPath, exportName = 'SLOT_DATA', board = 'Main Key
 const { SLOT_DATA } = await import(pathToFileURL(path.resolve(xmasPath)).href);
 const ti = JSON.parse(fs.readFileSync(tiPath, 'utf8'));
 // 카피 없는 판 (Figma 에서 카피 인스턴스를 숨긴 사이즈)
-const NO_COPY = new Set(['lgcom-PR0001-PC-960x600','lgcom-PR0001-pc-mo-630x420','lgcom-PD0046-pc-464x300','lgcom-ST0041-640x340','lgcom-PR0001-928x600','googlesem-1200x1200','googlesem-1200x628','ecrm-1200x1200-2','ecrm-1200x520','pinapenezenka-330x135','taiwanaffiliate-1500x1000','telushealth-1000x1000','telushealth-1080x720']);
+const NO_COPY = new Set(['thinq-1000x800','lgcom-PR0001-PC-960x600','lgcom-PR0001-pc-mo-630x420','lgcom-PD0046-pc-464x300','lgcom-ST0041-640x340','lgcom-PR0001-928x600','googlesem-1200x1200','googlesem-1200x628','ecrm-1200x1200-2','ecrm-1200x520','pinapenezenka-330x135','taiwanaffiliate-1500x1000','telushealth-1000x1000','telushealth-1080x720']);
 const out = {}; const report = [];
 for (const [ch, list] of Object.entries(ti)) {
   const pool = [...(SLOT_DATA.main[ch] || [])];

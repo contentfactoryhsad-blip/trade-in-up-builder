@@ -177,7 +177,7 @@ const colorOf = i => COLORS[i % COLORS.length];
 
 /** 매체(Channel) — 3 단계에서 미리보기 아래 알약으로 고른다. 목록은 크리스마스 빌더와 같다. 매체별 사이즈는 나중에 */
 const CHANNEL_ROWS = [
-  ['ALL', 'LG.com', 'Criteo', 'DV360', 'Pmax', 'META', 'Google SEM', 'Twitch', 'Quantcast', 'ECRM'],
+  ['ALL', 'LG.com', 'ThinQ', 'Criteo', 'DV360', 'Pmax', 'META', 'Google SEM', 'Twitch', 'Quantcast', 'ECRM'],
   ['Rakuten', 'Venngo', 'Perkopolis', 'Awin', 'Data Audience', 'Vase kupony', 'Plna penezenka', 'Tipli', 'Taiwan Affiliate', 'Telus Health'],
 ].map(row => row.map(label => ({ key: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label })));
 
